@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "dev.aureus.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ParticleEngineMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

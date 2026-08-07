@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "aureus_client",
+  "version": "${version}",
+  "name": "Aureus Client",
+  "description": "Cliente ligero de rendimiento y herramientas PvP de juego limpio.",
+  "authors": ["Aureus Team"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.aureus.client.AureusClient"]
+  },
+  "mixins": [
+    {
+      "config": "aureus-client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
