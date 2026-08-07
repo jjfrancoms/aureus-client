@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "prepare-assets": "node scripts/prepare-embedded-assets.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },
