@@ -1,0 +1,60 @@
+name: Package Aureus
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: macOS
+          - os: windows-latest
+            artifact: Windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+        working-directory: launcher
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: launcher
+          tagName: v__VERSION__
+          releaseName: Aureus v__VERSION__
+          releaseBody: Descarga gratuita de Aureus para macOS y Windows. Incluye actualización automática firmada.
+          releaseDraft: false
+          prerelease: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Aureus-${{ matrix.artifact }}
+          path: |
+            launcher/src-tauri/target/release/bundle/**/*.dmg
+            launcher/src-tauri/target/release/bundle/**/*.app
+            launcher/src-tauri/target/release/bundle/**/*.msi
+            launcher/src-tauri/target/release/bundle/**/*.exe
+            launcher/src-tauri/target/release/bundle/**/*.sig
+            launcher/src-tauri/target/release/bundle/**/latest.json
+          if-no-files-found: error
