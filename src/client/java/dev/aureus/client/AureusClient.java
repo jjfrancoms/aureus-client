@@ -4,6 +4,8 @@ import dev.aureus.client.config.ClientConfig;
 import dev.aureus.client.metrics.CombatMetrics;
 import dev.aureus.client.metrics.FrameMetrics;
 import dev.aureus.client.optimization.ParticleBudget;
+import dev.aureus.client.optimization.VanillaOptimizer;
+import dev.aureus.client.optimization.OptimizationProfile;
 import dev.aureus.client.ui.PerformanceHud;
 import dev.aureus.client.ui.ConfigScreen;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -17,6 +19,8 @@ import org.lwjgl.glfw.GLFW;
 
 public final class AureusClient implements ClientModInitializer {
     public static final String MOD_ID = "aureus_client";
+    private boolean initialProfileApplied;
+    private String activeServer = "";
 
     @Override
     public void onInitializeClient() {
@@ -28,6 +32,19 @@ public final class AureusClient implements ClientModInitializer {
                 "key.aureus_client.open_menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, category
         ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!initialProfileApplied && client.options != null) {
+                VanillaOptimizer.apply(client);
+                initialProfileApplied = true;
+            }
+            String server = client.getCurrentServer() == null ? "" : client.getCurrentServer().ip;
+            if (!server.equals(activeServer)) {
+                activeServer = server;
+                String profile = ClientConfig.get().serverProfiles.get(server);
+                if (profile != null) {
+                    try { OptimizationProfile.valueOf(profile).apply(ClientConfig.get()); VanillaOptimizer.apply(client); ClientConfig.save(); }
+                    catch (IllegalArgumentException ignored) { }
+                }
+            }
             CombatMetrics.onEndTick(client);
             FrameMetrics.onEndTick(client);
             ParticleBudget.reset();

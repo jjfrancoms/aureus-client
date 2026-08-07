@@ -16,8 +16,8 @@ import java.util.List;
 
 public final class PerformanceHud {
     private static final int TEXT = 0xFFF4F4F4;
-    private static final int ACCENT = 0xFF72E39A;
-    private static final int WARNING = 0xFFFFC857;
+    private static final int ACCENT = 0xFFF4F4F2;
+    private static final int WARNING = 0xFFB8B8B8;
     private static final int INACTIVE = 0xFF777777;
 
     private PerformanceHud() {
@@ -30,30 +30,30 @@ public final class PerformanceHud {
             return;
         }
 
-        int y = 6;
+        int y = config.hudY;
         int fps = Math.max(client.getFps(), 1);
         if (config.showFps) {
-            draw(graphics, client, "FPS  " + fps, 6, y, fps >= 60 ? ACCENT : WARNING);
+            draw(graphics, client, "FPS  " + fps, config.hudX, y, fps >= 60 ? ACCENT : WARNING);
             y += 11;
         }
         if (config.showFrameTime) {
-            draw(graphics, client, "Frame  %.1f ms".formatted(1_000.0 / fps), 6, y, TEXT);
+            draw(graphics, client, "Frame  %.1f ms".formatted(1_000.0 / fps), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showSessionMetrics && FrameMetrics.averageFps() > 0) {
             draw(graphics, client, "Prom. " + FrameMetrics.averageFps()
-                    + " | 1% low " + FrameMetrics.onePercentLow(), 6, y, TEXT);
+                    + " | 1% low " + FrameMetrics.onePercentLow(), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showCps) {
-            draw(graphics, client, "CPS  " + CombatMetrics.leftCps(), 6, y, TEXT);
+            draw(graphics, client, "CPS  " + CombatMetrics.leftCps(), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showPing && client.player != null && client.getConnection() != null) {
             PlayerInfo info = client.getConnection().getPlayerInfo(client.player.getUUID());
             if (info != null) {
                 int latency = info.getLatency();
-                draw(graphics, client, "Ping  " + latency + " ms", 6, y, latency < 100 ? ACCENT : WARNING);
+                draw(graphics, client, "Ping  " + latency + " ms", config.hudX, y, latency < 100 ? ACCENT : WARNING);
                 y += 11;
             }
         }
@@ -61,22 +61,23 @@ public final class PerformanceHud {
             Runtime runtime = Runtime.getRuntime();
             long used = (runtime.totalMemory() - runtime.freeMemory()) / 1_048_576L;
             long max = runtime.maxMemory() / 1_048_576L;
-            draw(graphics, client, "RAM  " + used + "/" + max + " MB", 6, y, TEXT);
+            draw(graphics, client, "RAM  " + used + "/" + max + " MB", config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showCoordinates && client.player != null) {
             draw(graphics, client, "XYZ  %.1f  %.1f  %.1f".formatted(
-                    client.player.getX(), client.player.getY(), client.player.getZ()), 6, y, TEXT);
+                    client.player.getX(), client.player.getY(), client.player.getZ()), config.hudX, y, TEXT);
         }
 
         if (config.showKeystrokes) {
-            int center = graphics.guiWidth() / 2;
-            drawKey(graphics, client, "W", center - 6, 6, client.options.keyUp.isDown());
-            drawKey(graphics, client, "A", center - 18, 18, client.options.keyLeft.isDown());
-            drawKey(graphics, client, "S", center - 6, 18, client.options.keyDown.isDown());
-            drawKey(graphics, client, "D", center + 6, 18, client.options.keyRight.isDown());
-            drawKey(graphics, client, "LMB", center - 31, 31, client.options.keyAttack.isDown());
-            drawKey(graphics, client, "RMB", center + 7, 31, client.options.keyUse.isDown());
+            int center = graphics.guiWidth() * config.keysXPercent / 100;
+            int keysY = config.keysY;
+            drawKey(graphics, client, "W", center - 6, keysY, client.options.keyUp.isDown());
+            drawKey(graphics, client, "A", center - 18, keysY + 12, client.options.keyLeft.isDown());
+            drawKey(graphics, client, "S", center - 6, keysY + 12, client.options.keyDown.isDown());
+            drawKey(graphics, client, "D", center + 6, keysY + 12, client.options.keyRight.isDown());
+            drawKey(graphics, client, "LMB", center - 31, keysY + 25, client.options.keyAttack.isDown());
+            drawKey(graphics, client, "RMB", center + 7, keysY + 25, client.options.keyUse.isDown());
         }
 
         if (client.player != null) {
