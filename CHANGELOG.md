@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Preparar Minecraft ya no inicia el juego.
+- Añade confirmación previa con versión, instancia, memoria, perfil y contenido.
+- Permite abrir Rendimiento para configurar antes de iniciar o cancelar el arranque.
+
 ## Unreleased
 
 - Added persistent launcher instances with validated memory and JVM settings.
