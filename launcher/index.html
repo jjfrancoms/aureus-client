@@ -25,7 +25,7 @@
     <main>
       <header class="page-header">
         <div><p class="eyebrow">AUREUS CLIENT</p><h1 id="page-title">Inicio</h1><p id="page-description">Prepara Minecraft para jugar con Aureus.</p></div>
-        <span class="version">v0.3.0 · <span class="selected-version-label">1.21.11</span></span>
+        <span class="version">v0.3.1 · <span class="selected-version-label">1.21.11</span></span>
       </header>
 
       <div id="notice" class="notice" role="status" aria-live="polite">Comprobando tu instalación…</div>
@@ -108,7 +108,7 @@
         <div class="settings-stack">
           <article class="panel settings-row"><div><span class="panel-kicker">APLICACIÓN</span><h3>Preferencias del launcher</h3><p>Estos ajustes se guardan únicamente en este equipo.</p></div><div class="toggles"><label><input id="update-check" type="checkbox" checked /><span>Buscar actualizaciones al iniciar</span></label><label><input id="compact-mode" type="checkbox" /><span>Interfaz compacta</span></label></div></article>
           <article class="panel settings-row updater-row"><div><span class="panel-kicker">ACTUALIZACIONES</span><h3 id="updater-title">Aureus está actualizado</h3><p id="updater-status">La comprobación automática está activa.</p><div class="update-progress" id="update-progress" hidden><span id="update-progress-bar"></span></div></div><button id="check-update-now" class="secondary">Buscar ahora</button></article>
-          <article class="panel technical"><span class="panel-kicker">INFORMACIÓN TÉCNICA</span><div class="detail-list"><div><span>Versión del launcher</span><b>0.3.0</b></div><div><span>Microsoft Client ID</span><code id="client-id">Cargando…</code></div><div><span>Datos de acceso</span><b>No se almacena tu contraseña</b></div></div></article>
+          <article class="panel technical"><span class="panel-kicker">INFORMACIÓN TÉCNICA</span><div class="detail-list"><div><span>Versión del launcher</span><b>0.3.1</b></div><div><span>Microsoft Client ID</span><code id="client-id">Cargando…</code></div><div><span>Datos de acceso</span><b>No se almacena tu contraseña</b></div></div></article>
           <article class="panel settings-shortcuts"><div><span class="panel-kicker">CONFIGURACIÓN AVANZADA</span><h3>Más opciones</h3><p>Accede solo cuando necesites ajustar el cliente.</p></div><div class="actions"><button class="secondary" data-open-view="performance">Rendimiento</button><button class="secondary" data-open-view="account">Cuenta</button></div></article>
           <article class="panel settings-row"><div><span class="panel-kicker">AJUSTE AUTOMÁTICO</span><h3>Perfil recomendado para este equipo</h3><p id="hardware-summary">Detectando memoria y procesador…</p></div><button id="recommend-profile" class="secondary">Detectar y aplicar</button></article>
           <article class="panel diagnostics-panel"><div><span class="panel-kicker">SOPORTE</span><h3>Diagnóstico del sistema</h3><p>Revisa Java, Fabric, Aureus y el último registro del juego.</p></div><button id="run-diagnostics" class="secondary">Ejecutar diagnóstico</button><pre id="diagnostics-output" hidden></pre></article>
@@ -124,5 +124,24 @@
         </div>
       </section>
     </main>
+    <dialog id="launch-confirmation" class="launch-confirmation">
+      <form method="dialog">
+        <span class="panel-kicker">CONFIRMAR INICIO</span>
+        <h2>¿Iniciar Minecraft?</h2>
+        <p>Revisa la configuración activa antes de abrir el juego.</p>
+        <div class="launch-summary">
+          <div><span>Versión</span><b id="confirm-version">1.21.11</b></div>
+          <div><span>Instancia</span><b id="confirm-instance">Aureus</b></div>
+          <div><span>Memoria</span><b id="confirm-memory">5 GB</b></div>
+          <div><span>Perfil</span><b id="confirm-profile">Personalizado</b></div>
+          <div><span>Contenido</span><b id="confirm-content">Fabric</b></div>
+        </div>
+        <div class="confirmation-actions">
+          <button id="configure-before-launch" type="button" class="secondary">Configurar</button>
+          <button value="cancel" class="secondary">Cancelar</button>
+          <button id="confirm-launch" type="button" class="primary">Iniciar Minecraft</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

@@ -563,6 +563,19 @@ main {
 .updater-row { align-items: center; }
 .update-progress { width: min(440px, 100%); height: 3px; margin-top: 14px; overflow: hidden; background: #303330; }
 .update-progress span { display: block; width: 0; height: 100%; background: #f4f4f2; transition: width .2s ease; }
+.launch-confirmation { width: min(560px, calc(100vw - 32px)); padding: 0; border: 1px solid #343734; border-radius: 14px; background: #0d0f0e; color: #f5f7f2; box-shadow: 0 26px 90px rgba(0,0,0,.72); }
+.launch-confirmation::backdrop { background: rgba(0,0,0,.78); backdrop-filter: blur(7px); }
+.launch-confirmation form { padding: 28px; }
+.launch-confirmation h2 { margin: 8px 0 4px; font-size: 26px; }
+.launch-confirmation > form > p { margin: 0 0 22px; color: var(--muted); }
+.launch-summary { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: var(--border); }
+.launch-summary div { padding: 13px 15px; background: #121513; }
+.launch-summary div:last-child { grid-column: 1 / -1; }
+.launch-summary span, .launch-summary b { display: block; }
+.launch-summary span { margin-bottom: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.launch-summary b { font-size: 13px; overflow-wrap: anywhere; }
+.confirmation-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+.confirmation-actions button { min-width: 105px; }
 .toggles {
   display: grid;
   gap: 12px;

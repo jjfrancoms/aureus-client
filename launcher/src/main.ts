@@ -256,7 +256,18 @@ async function installMod() {
   }
 }
 
+function requestMinecraftLaunch() {
+  const dialog = el<HTMLDialogElement>("#launch-confirmation");
+  el("#confirm-version").textContent = selectedMinecraftVersion;
+  el("#confirm-instance").textContent = activeInstance?.name ?? selectedInstanceId;
+  el("#confirm-memory").textContent = `${Math.round((activeInstance?.memoryMb ?? Number(localStorage.getItem("aureus.memory") ?? "5") * 1024) / 1024)} GB`;
+  el("#confirm-profile").textContent = activeInstance?.performanceProfile ?? localStorage.getItem("aureus.profile") ?? "Personalizado";
+  el("#confirm-content").textContent = el("#version-compatibility").textContent ?? "Preparado";
+  dialog.showModal();
+}
+
 async function playMinecraft() {
+  el<HTMLDialogElement>("#launch-confirmation").close();
   showNotice("Iniciando Minecraft directamente con Fabric…");
   el("#launch-progress").hidden = false;
   el<HTMLButtonElement>("#cancel-launch").hidden = false;
@@ -541,7 +552,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   all(".nav-item").forEach(button => button.addEventListener("click", () => switchView(button.dataset.view as ViewName)));
   all(".install-action").forEach(button => button.addEventListener("click", installMod));
-  all(".play-action").forEach(button => button.addEventListener("click", playMinecraft));
+  all(".play-action").forEach(button => button.addEventListener("click", requestMinecraftLaunch));
+  el("#confirm-launch").addEventListener("click", playMinecraft);
+  el("#configure-before-launch").addEventListener("click", () => {
+    el<HTMLDialogElement>("#launch-confirmation").close();
+    switchView("performance");
+  });
   el("#cancel-launch").addEventListener("click", cancelLaunch);
   el("#kill-game").addEventListener("click", killMinecraft);
   el("#runtime-kill").addEventListener("click", killMinecraft);
