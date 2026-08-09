@@ -46,7 +46,10 @@ jobs:
           projectPath: launcher
           tagName: v__VERSION__
           releaseName: Aureus v__VERSION__
-          releaseBody: Descarga gratuita de Aureus para macOS y Windows. Incluye actualización automática firmada.
+          releaseBody: |
+            Descarga gratuita de Aureus para macOS y Windows. Incluye actualización automática firmada.
+
+            Windows installers for this open-source project use free code signing provided by [SignPath Foundation](https://signpath.org/) once project approval and CI integration are complete. Builds are produced from the public tagged source by this repository's GitHub Actions workflow.
           releaseDraft: true
           prerelease: false
       - uses: actions/upload-artifact@v4

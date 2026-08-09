@@ -41,6 +41,20 @@ cd src-tauri
 cargo check
 ```
 
+## Descargas y firma de código
+
+Las versiones oficiales se publican exclusivamente en [GitHub Releases](https://github.com/jjfrancoms/aureus-client/releases). Aureus ha solicitado participar en el programa gratuito de [SignPath Foundation](https://signpath.org/) para firmar los instaladores de Windows de este proyecto de código abierto. Las firmas se solicitarán desde GitHub Actions una vez que SignPath apruebe el proyecto; ningún mantenedor tendrá acceso directo a la clave privada de firma.
+
+Cada versión se construye desde una etiqueta pública `v*` mediante [`.github/workflows/package.yml`](.github/workflows/package.yml). El flujo compila el mod, instala dependencias desde los archivos de bloqueo, prepara los recursos integrados y genera por separado los paquetes de Windows y macOS. La publicación solo se hace visible cuando ambos trabajos terminan correctamente.
+
+### Verificación y reproducibilidad
+
+- Código fuente y etiqueta de cada versión: públicos en este repositorio.
+- Dependencias de Node y Rust: fijadas mediante `package-lock.json` y `Cargo.lock`.
+- Historial de compilaciones: [GitHub Actions](https://github.com/jjfrancoms/aureus-client/actions).
+- Artefactos oficiales: [GitHub Releases](https://github.com/jjfrancoms/aureus-client/releases).
+- Política de privacidad: [PRIVACY.md](PRIVACY.md).
+
 ## Privacidad
 
 Consulta [PRIVACY.md](PRIVACY.md). Aureus está en desarrollo y no es un producto oficial de Minecraft, Mojang ni Microsoft.
