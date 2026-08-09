@@ -31,6 +31,7 @@ public final class ClientConfig {
     public boolean showEffects = true;
     public boolean showMemory = false;
     public boolean showCompatibility = false;
+    public boolean showItemCounters = true;
     public boolean showBiome = true;
     public boolean showDirection = true;
     public boolean reduceBackgroundFps = true;

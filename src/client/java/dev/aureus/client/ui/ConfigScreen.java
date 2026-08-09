@@ -4,10 +4,12 @@ import dev.aureus.client.config.ClientConfig;
 import dev.aureus.client.optimization.OptimizationProfile;
 import dev.aureus.client.optimization.VanillaOptimizer;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
@@ -18,12 +20,15 @@ public final class ConfigScreen extends Screen {
     private static final int TEXT = 0xFFF2F4EF;
     private static final int MUTED = 0xFF92988F;
     private enum Page { HOME, HUD, PERFORMANCE, APPEARANCE, SETTINGS }
+    private enum ModuleFilter { ALL, HUD, PVP, INFO }
 
     private final Screen parent;
     private Page page = Page.HOME;
     private int nextY;
     private int contentLeft;
     private int contentWidth;
+    private ModuleFilter moduleFilter = ModuleFilter.ALL;
+    private int moduleIndex;
 
     public ConfigScreen(Screen parent) {
         super(Component.literal("Aureus Client"));
@@ -82,20 +87,26 @@ public final class ConfigScreen extends Screen {
     }
 
     private void buildHudPage() {
-        addModule("▣", "FPS", () -> config().showFps, value -> config().showFps = value, 0);
-        addModule("⌁", "Frame time", () -> config().showFrameTime, value -> config().showFrameTime = value, 1);
-        addModule("●", "CPS", () -> config().showCps, value -> config().showCps = value, 2);
-        addModule("W", "Teclas", () -> config().showKeystrokes, value -> config().showKeystrokes = value, 3);
-        addModule("◉", "Ping", () -> config().showPing, value -> config().showPing = value, 4);
-        addModule("+", "Cooldown", () -> config().showAttackCooldown, value -> config().showAttackCooldown = value, 5);
-        addModule("◇", "Armadura", () -> config().showArmor, value -> config().showArmor = value, 6);
-        addModule("✦", "Efectos", () -> config().showEffects, value -> config().showEffects = value, 7);
-        addModule("X", "Coordenadas", () -> config().showCoordinates, value -> config().showCoordinates = value, 8);
-        addModule("N", "Dirección", () -> config().showDirection, value -> config().showDirection = value, 9);
-        addModule("♧", "Bioma", () -> config().showBiome, value -> config().showBiome = value, 10);
-        addModule("▤", "Memoria", () -> config().showMemory, value -> config().showMemory = value, 11);
-        addModule("↗", "Métricas", () -> config().showSessionMetrics, value -> config().showSessionMetrics = value, 12);
-        nextY = 70 + ((13 + moduleColumns() - 1) / moduleColumns()) * 25 + 8;
+        moduleIndex = 0;
+        addFilter(ModuleFilter.ALL, "TODOS", 0);
+        addFilter(ModuleFilter.HUD, "HUD", 1);
+        addFilter(ModuleFilter.PVP, "PVP", 2);
+        addFilter(ModuleFilter.INFO, "INFO", 3);
+        addModule(ModuleFilter.HUD, "▣", "FPS", "Rendimiento en tiempo real", () -> config().showFps, value -> config().showFps = value);
+        addModule(ModuleFilter.HUD, "⌁", "Frame time", "Estabilidad de cada frame", () -> config().showFrameTime, value -> config().showFrameTime = value);
+        addModule(ModuleFilter.PVP, "●", "CPS", "Clics por segundo", () -> config().showCps, value -> config().showCps = value);
+        addModule(ModuleFilter.HUD, "W", "Teclas", "WASD y botones del ratón", () -> config().showKeystrokes, value -> config().showKeystrokes = value);
+        addModule(ModuleFilter.PVP, "◉", "Ping", "Latencia con el servidor", () -> config().showPing, value -> config().showPing = value);
+        addModule(ModuleFilter.PVP, "+", "Cooldown", "Indicador de ataque", () -> config().showAttackCooldown, value -> config().showAttackCooldown = value);
+        addModule(ModuleFilter.PVP, "◇", "Armadura e ítems", "Iconos, barra y durabilidad", () -> config().showArmor, value -> config().showArmor = value);
+        addModule(ModuleFilter.PVP, "✦", "Efectos", "Pociones activas", () -> config().showEffects, value -> config().showEffects = value);
+        addModule(ModuleFilter.PVP, "#", "Contadores PvP", "Manzanas, tótems y cargas", () -> config().showItemCounters, value -> config().showItemCounters = value);
+        addModule(ModuleFilter.INFO, "X", "Coordenadas", "Posición XYZ", () -> config().showCoordinates, value -> config().showCoordinates = value);
+        addModule(ModuleFilter.INFO, "N", "Dirección", "Orientación cardinal", () -> config().showDirection, value -> config().showDirection = value);
+        addModule(ModuleFilter.INFO, "♧", "Bioma", "Bioma actual", () -> config().showBiome, value -> config().showBiome = value);
+        addModule(ModuleFilter.INFO, "▤", "Memoria", "RAM utilizada", () -> config().showMemory, value -> config().showMemory = value);
+        addModule(ModuleFilter.INFO, "↗", "Métricas", "Promedio y 1% low", () -> config().showSessionMetrics, value -> config().showSessionMetrics = value);
+        nextY = 84 + ((moduleIndex + moduleColumns() - 1) / moduleColumns()) * 46 + 8;
         addCycle("HUD X", () -> config().hudX, value -> config().hudX = value, 0, 500, 10, " px", 0);
         addCycle("HUD Y", () -> config().hudY, value -> config().hudY = value, 0, 500, 10, " px", 1); nextRow();
         addCycle("Teclas X", () -> config().keysXPercent, value -> config().keysXPercent = value, 10, 90, 5, "%", 0);
@@ -154,16 +165,19 @@ public final class ConfigScreen extends Screen {
     private int columnX(int column) { return contentLeft + column * (columnWidth() + 8); }
     private int moduleColumns() { return contentWidth >= 540 ? 3 : 2; }
     private int moduleWidth() { return Math.max(100, (contentWidth - (moduleColumns() - 1) * 8) / moduleColumns()); }
-    private void addModule(String icon, String label, BooleanSupplier getter, BooleanSetter setter, int index) {
+    private void addFilter(ModuleFilter target, String label, int index) {
+        Component text = Component.literal(label).withColor(moduleFilter == target ? 0x57E389 : 0x8B938D);
+        addRenderableWidget(Button.builder(text, button -> { moduleFilter = target; rebuildWidgets(); })
+                .bounds(contentLeft + index * 63, 56, 58, 20).build());
+    }
+    private void addModule(ModuleFilter category, String icon, String label, String description,
+                           BooleanSupplier getter, BooleanSetter setter) {
+        if (moduleFilter != ModuleFilter.ALL && moduleFilter != category) return;
+        int index = moduleIndex++;
         int columns = moduleColumns();
         int x = contentLeft + (index % columns) * (moduleWidth() + 8);
-        int y = 70 + (index / columns) * 25;
-        addRenderableWidget(Button.builder(moduleLabel(icon, label, getter.getAsBoolean()), button -> {
-            boolean value = !getter.getAsBoolean();
-            setter.set(value);
-            button.setMessage(moduleLabel(icon, label, value));
-            applyLive();
-        }).bounds(x, y, moduleWidth(), 20).build());
+        int y = 84 + (index / columns) * 46;
+        addRenderableWidget(new ModuleCard(x, y, moduleWidth(), 38, icon, label, description, getter, setter));
     }
 
     private void addToggle(String label, BooleanSupplier getter, BooleanSetter setter, int column) {
@@ -191,10 +205,6 @@ public final class ConfigScreen extends Screen {
     private void nextRow() { nextY += 25; }
     private static ClientConfig config() { return ClientConfig.get(); }
     private static Component toggleLabel(String label, boolean enabled) { return Component.literal(label + ": " + (enabled ? "ON" : "OFF")); }
-    private static Component moduleLabel(String icon, String label, boolean enabled) {
-        return Component.literal((enabled ? "●  " : "○  ") + icon + "  " + label)
-                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.GRAY);
-    }
     private static Component valueLabel(String label, int value, String suffix) { return Component.literal(label + ": " + value + suffix); }
     private static Component profileLabel() { return Component.literal("Perfil: " + config().profile); }
 
@@ -230,5 +240,53 @@ public final class ConfigScreen extends Screen {
 
     @Override
     public void onClose() { applyLive(); minecraft.setScreen(parent); }
+    private final class ModuleCard extends AbstractWidget {
+        private final String icon;
+        private final String label;
+        private final String description;
+        private final BooleanSupplier getter;
+        private final BooleanSetter setter;
+
+        private ModuleCard(int x, int y, int width, int height, String icon, String label, String description,
+                           BooleanSupplier getter, BooleanSetter setter) {
+            super(x, y, width, height, Component.literal(label));
+            this.icon = icon;
+            this.label = label;
+            this.description = description;
+            this.getter = getter;
+            this.setter = setter;
+        }
+
+        @Override
+        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+            boolean enabled = getter.getAsBoolean();
+            int border = enabled ? 0xFF43D67C : isHovered ? 0xFF69716B : 0xFF343A36;
+            int background = enabled ? (isHovered ? 0xF027382E : 0xE8212D26)
+                    : (isHovered ? 0xF0252926 : 0xE81A1D1B);
+            graphics.fill(getX(), getY(), getRight(), getBottom(), border);
+            graphics.fill(getX() + 1, getY() + 1, getRight() - 1, getBottom() - 1, background);
+            graphics.fill(getX() + 8, getY() + 8, getX() + 30, getY() + 30,
+                    enabled ? 0xFF315B40 : 0xFF303431);
+            graphics.drawCenteredString(font, icon, getX() + 19, getY() + 15, enabled ? 0xFF7CF0A5 : 0xFFADB3AE);
+            graphics.drawString(font, label, getX() + 37, getY() + 8, 0xFFF2F4F1, false);
+            graphics.drawString(font, description, getX() + 37, getY() + 21, 0xFF858C87, false);
+            int switchX = getRight() - 31;
+            graphics.fill(switchX, getY() + 13, getRight() - 8, getY() + 25,
+                    enabled ? 0xFF3CCF75 : 0xFF454A46);
+            int knobX = enabled ? getRight() - 16 : switchX + 2;
+            graphics.fill(knobX, getY() + 15, knobX + 8, getY() + 23, 0xFFF4F5F3);
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            setter.set(!getter.getAsBoolean());
+            applyLive();
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput output) {
+            defaultButtonNarrationText(output);
+        }
+    }
     @FunctionalInterface private interface BooleanSetter { void set(boolean value); }
 }
