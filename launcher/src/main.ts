@@ -118,13 +118,15 @@ async function checkForAureusUpdate(manual = false) {
     globalLabel.textContent = `Actualizar a ${pendingUpdate.version}`;
     showNotice(`Nueva versión ${pendingUpdate.version} disponible.`, "neutral");
   } catch (error) {
-    title.textContent = "No se pudo comprobar";
-    status.textContent = String(error);
+    const message = String(error);
+    const platformPending = message.includes("fallback platforms") || message.includes("platforms` object");
+    title.textContent = platformPending ? "Actualización de Windows en preparación" : "No se pudo comprobar";
+    status.textContent = platformPending ? "macOS terminó primero. Aureus volverá a comprobar cuando el instalador de Windows esté publicado." : message;
     button.textContent = "Reintentar";
     globalButton.hidden = false;
     globalButton.disabled = false;
-    globalLabel.textContent = "Reintentar actualización";
-    if (manual) showNotice(`No se pudo buscar actualizaciones: ${String(error)}`, "error");
+    globalLabel.textContent = platformPending ? "Windows aún se está preparando" : "Reintentar actualización";
+    if (manual) showNotice(platformPending ? "La versión de Windows todavía se está generando. Intenta nuevamente en unos minutos." : `No se pudo buscar actualizaciones: ${message}`, platformPending ? "neutral" : "error");
   } finally {
     updateInProgress = false;
     button.disabled = false;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5
+
+- Publica una actualización únicamente cuando macOS y Windows estén completos.
+- Sustituye el error técnico de plataforma por un estado comprensible de preparación.
+
 ## 0.3.4
 
 - Corrige la falsa detección de Minecraft ejecutándose en Windows.
