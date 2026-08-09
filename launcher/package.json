@@ -1,14 +1,15 @@
 {
   "name": "launcher",
   "private": true,
-  "version": "0.3.9",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "prepare-assets": "node scripts/prepare-embedded-assets.mjs",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:build:local": "tauri build --config src-tauri/tauri.local.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

@@ -25,7 +25,7 @@
     <main>
       <header class="page-header">
         <div><p class="eyebrow">AUREUS CLIENT</p><h1 id="page-title">Inicio</h1><p id="page-description">Prepara Minecraft para jugar con Aureus.</p></div>
-        <div class="header-actions"><button id="global-update" class="global-update" hidden><span class="update-dot"></span><b id="global-update-label">Buscando actualización…</b></button><span class="version">v0.3.9 · <span class="selected-version-label">1.21.11</span></span></div>
+        <div class="header-actions"><button id="global-update" class="global-update" hidden><span class="update-dot"></span><b id="global-update-label">Buscando actualización…</b></button><span class="version">v0.4.0 · <span class="selected-version-label">1.21.11</span></span></div>
       </header>
 
       <div id="notice" class="notice" role="status" aria-live="polite">Comprobando tu instalación…</div>
@@ -34,11 +34,11 @@
         <article class="launcher-stage">
           <img id="custom-background" class="custom-background" alt="Imagen o GIF personalizado" hidden />
           <div class="stage-overlay"></div>
-          <div class="stage-media-actions"><label class="stage-tool">Personalizar portada<input id="background-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label><button id="remove-background" class="stage-remove" title="Quitar portada">×</button></div>
+          <div class="stage-media-actions"><label class="stage-tool">Personalizar portada<input id="background-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label><button id="remove-background" class="stage-remove" title="Quitar portada" aria-label="Quitar portada">×</button></div>
           <div class="stage-placeholder"><small>MINECRAFT <span class="selected-version-label">1.21.11</span></small><strong>Aureus</strong><span>Optimizado. Verificado. Listo.</span></div>
           <div class="stage-status"><strong id="health-label">REVISANDO</strong><small id="health-detail">Comprobando componentes</small><span id="java-status" hidden>Java…</span><span id="mc-status" hidden>Minecraft…</span><span id="mod-status" hidden>Aureus…</span></div>
           <div class="stage-launch"><button class="primary play-action">PLAY</button><button id="kill-game" class="secondary danger-action" hidden>Cerrar Minecraft</button></div>
-          <div id="launch-progress" class="launch-progress" hidden>
+          <div id="launch-progress" class="launch-progress" role="status" aria-live="polite" hidden>
             <div class="launch-progress-head"><strong id="launch-stage">Preparando</strong><span id="launch-percent">0%</span></div>
             <div class="launch-progress-track"><span id="launch-progress-bar"></span></div>
             <p id="launch-detail">Comprobando componentes…</p>
@@ -58,7 +58,7 @@
         <details class="panel disclosure">
           <summary>Herramientas avanzadas</summary>
           <p>Administración, recuperación y exportación de la instancia.</p>
-          <div class="compact-actions"><button id="refresh-content" class="secondary">Administrar contenido</button><button id="duplicate-instance" class="secondary">Duplicar</button><button id="backup-instance" class="secondary">Respaldar</button><button id="export-instance" class="secondary">Exportar</button><button id="import-instance" class="secondary">Importar</button><button id="analyze-crash" class="secondary">Analizar cierre</button><button id="delete-instance" class="secondary danger-action">Eliminar</button></div>
+          <div class="compact-actions"><button id="refresh-content" class="secondary">Administrar contenido</button><button id="verify-integrity" class="secondary">Verificar</button><button id="duplicate-instance" class="secondary">Duplicar</button><button id="backup-instance" class="secondary">Respaldar</button><button id="restore-instance" class="secondary">Restaurar</button><button id="export-instance" class="secondary">Exportar</button><button id="import-instance" class="secondary">Importar</button><button id="analyze-crash" class="secondary">Analizar cierre</button><button id="delete-instance" class="secondary danger-action">Eliminar</button></div>
         </details>
         <article id="content-manager" class="panel content-manager" hidden><div class="panel-title"><div><span class="panel-kicker">CONTENIDO INSTALADO</span><h3>Mods, recursos, shaders y datapacks</h3></div><button id="close-content" class="secondary">Cerrar</button></div><div class="content-search"><input id="mod-search" type="search" placeholder="Buscar mods compatibles en Modrinth" /><button id="search-mods" class="secondary">Buscar</button></div><div id="mod-search-results" class="content-list" hidden></div><div id="content-list" class="content-list"><p class="muted-copy">Preparando inventario…</p></div></article>
         <article id="recovery-result" class="panel recovery-result" hidden></article>
@@ -80,7 +80,10 @@
           </article>
         </div>
         <article class="panel feature-panel"><div><span class="panel-kicker">INCLUIDO EN EL MOD</span><h3>Herramientas competitivas limpias</h3></div><div class="feature-tags"><span>FPS y frametime</span><span>CPS</span><span>Ping</span><span>Armadura</span><span>Cooldown</span><span>Efectos</span><span>Memoria</span><span>Limitador de partículas</span></div></article>
+        <article class="panel settings-row"><div><span class="panel-kicker">PERFIL PORTÁTIL</span><h3>Compartir configuración</h3><p>Exporta rendimiento, memoria, JVM y HUD sin incluir tu cuenta ni mundos.</p></div><div class="actions"><button id="export-profile" class="secondary">Exportar perfil</button><button id="import-profile" class="secondary">Importar perfil</button></div></article>
         <article class="panel settings-row"><div><span class="panel-kicker">BENCHMARK REAL</span><h3>FPS, 1% low y memoria durante el juego</h3><p id="benchmark-summary">Juega al menos 20 segundos para crear una medición.</p></div><button id="read-benchmark" class="secondary">Ver resultado</button></article>
+        <article class="panel settings-row"><div><span class="panel-kicker">SISTEMA EN VIVO</span><h3>Consumo y estado térmico</h3><p id="telemetry-summary">Esperando datos del sistema…</p></div><span class="state-pill">Actualización cada 3 s</span></article>
+        <article class="panel settings-row"><div><span class="panel-kicker">IMPACTO DE MODS</span><h3>Carga estimada de la instancia</h3><p id="mod-impact-summary">Compara tamaño, cantidad y componentes visuales con métricas reales.</p></div><button id="analyze-mod-impact" class="secondary">Analizar</button></article>
         <article class="panel settings-row"><div><span class="panel-kicker">COMPARACIÓN A/B</span><h3>Comparar configuraciones</h3><p id="benchmark-comparison">Guarda una medición como referencia y compárala después de cambiar mods o perfil.</p></div><div class="actions"><button id="save-baseline" class="secondary">Guardar referencia</button><button id="compare-benchmark" class="secondary">Comparar</button></div></article>
         <article class="panel performance-bundle"><div><span class="panel-kicker">STACK VERIFICADO · 1.21.11</span><h3>Optimización adicional</h3><p>Debugify y FPSFlow se incluyen en la preparación normal. Los experimentales permanecen apagados hasta que los autorices.</p></div><div class="experimental-mods"><label><input id="enable-bura" type="checkbox" /> Bura · chunks/FPS (alpha)</label><label><input id="enable-rhenium" type="checkbox" /> Rhenium · granjas/entidades</label><button id="apply-performance-mods" class="secondary">Aplicar selección</button></div></article>
       </section>
@@ -104,8 +107,9 @@
           <summary>Opciones avanzadas</summary>
           <div class="advanced-setting"><div><strong>Perfil recomendado</strong><small id="hardware-summary">Detectando memoria y procesador…</small></div><button id="recommend-profile" class="secondary">Aplicar</button></div>
           <div class="advanced-setting"><div><strong>Diagnóstico</strong><small>Java, Fabric y registros del juego</small></div><button id="run-diagnostics" class="secondary">Ejecutar</button></div>
+          <div class="advanced-setting"><div><strong>Archivos temporales</strong><small>Limpia descargas incompletas sin tocar mundos ni mods personales</small></div><button id="clean-caches" class="secondary">Limpiar</button></div>
           <pre id="diagnostics-output" hidden></pre>
-          <div class="technical-inline"><span>Launcher 0.3.9</span><span id="client-id">Cargando…</span></div>
+          <div class="technical-inline"><span>Launcher 0.4.0</span><span id="client-id">Cargando…</span></div>
         </details>
       </section>
 

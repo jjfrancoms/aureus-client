@@ -4,18 +4,19 @@ Aureus es un mod cliente de código abierto para Minecraft Java 1.21.11 y un lau
 
 ## Funciones actuales
 
-- HUD de FPS, frame time, promedio y 1% low.
-- CPS, teclas, ping, coordenadas y memoria.
-- Durabilidad de armadura, efectos y cooldown de ataque.
-- Perfiles MAX_FPS, BALANCED y QUALITY.
-- Presupuesto configurable de partículas mediante Mixin.
-- Detección de Sodium, Lithium, FerriteCore e ImmediatelyFast.
-- Launcher Tauri que detecta Java/Minecraft e instala el mod.
+- HUD individual para FPS, frame time, 1% low, CPS, teclas, ping, coordenadas, memoria, armadura, efectos, cooldown y contadores PvP.
+- Editor HUD arrastrable con escala, opacidad, búsqueda, perfiles por servidor y modo captura.
+- Perfiles competitivo, máximo FPS, equilibrado, calidad, RAM mínima y batería.
+- Benchmark A/B, telemetría local y recomendaciones por RAM, CPU y GPU.
+- Gestor general de versiones, Fabric, dependencias y mods compatibles desde Modrinth.
+- Descargas reanudables y verificadas, manifiestos, backups, rollback, reparación y modo seguro.
+- Instancias aisladas, perfiles portátiles y preservación de mods instalados manualmente.
+- Launcher Tauri compartido para Windows y macOS con actualizaciones firmadas.
 - Inicio de sesión Microsoft con Authorization Code + PKCE y callback local.
 
 ## Estado de autenticación
 
-El Client ID de Aureus está pendiente de revisión para la allowlist de Minecraft Java Game Services. Hasta que Mojang lo apruebe, Minecraft Services rechazará el último paso del inicio de sesión. No se incluyen secretos en este repositorio.
+El launcher usa inicio de sesión oficial de Microsoft mediante Authorization Code + PKCE. No incluye secretos y requiere que la cuenta conectada tenga una licencia válida de Minecraft Java.
 
 ## Juego limpio
 
@@ -41,7 +42,21 @@ cd src-tauri
 cargo check
 ```
 
+Para generar un instalador local de prueba sin una clave privada de actualización:
+
+```bash
+cd launcher
+npm run tauri:build:local
+```
+
+Este paquete local no representa una versión oficial firmada. Las publicaciones
+oficiales conservan `createUpdaterArtifacts` activo y requieren los secretos
+`TAURI_SIGNING_PRIVATE_KEY` y `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` en GitHub.
+
 ## Descargas y firma de código
+
+Consulta la [Code signing policy](CODE_SIGNING_POLICY.md), que define alcance,
+procedencia de compilación y responsables de revisión y aprobación.
 
 Las versiones oficiales se publican exclusivamente en [GitHub Releases](https://github.com/jjfrancoms/aureus-client/releases). Aureus ha solicitado participar en el programa gratuito de [SignPath Foundation](https://signpath.org/) para firmar los instaladores de Windows de este proyecto de código abierto. Las firmas se solicitarán desde GitHub Actions una vez que SignPath apruebe el proyecto; ningún mantenedor tendrá acceso directo a la clave privada de firma.
 

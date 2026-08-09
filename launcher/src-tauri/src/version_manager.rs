@@ -1,15 +1,72 @@
 use futures_util::{stream, StreamExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
-use std::io;
+use std::io::{self, Write};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fs,
     path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        OnceLock,
+    },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 const MANIFEST_URL: &str = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+
+struct DownloadTracker {
+    downloaded: AtomicU64,
+    total: AtomicU64,
+    started_ms: AtomicU64,
+}
+static DOWNLOAD_TRACKER: OnceLock<DownloadTracker> = OnceLock::new();
+fn tracker() -> &'static DownloadTracker {
+    DOWNLOAD_TRACKER.get_or_init(|| DownloadTracker {
+        downloaded: AtomicU64::new(0),
+        total: AtomicU64::new(0),
+        started_ms: AtomicU64::new(0),
+    })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadMetrics {
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub bytes_per_second: u64,
+}
+
+pub fn reset_download_metrics() {
+    let current = tracker();
+    current.downloaded.store(0, Ordering::Relaxed);
+    current.total.store(0, Ordering::Relaxed);
+    current.started_ms.store(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64,
+        Ordering::Relaxed,
+    );
+}
+
+#[tauri::command]
+pub fn download_metrics() -> DownloadMetrics {
+    let current = tracker();
+    let downloaded = current.downloaded.load(Ordering::Relaxed);
+    let started = current.started_ms.load(Ordering::Relaxed);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let elapsed_ms = now.saturating_sub(started).max(1);
+    DownloadMetrics {
+        downloaded_bytes: downloaded,
+        total_bytes: current.total.load(Ordering::Relaxed),
+        bytes_per_second: downloaded.saturating_mul(1000) / elapsed_ms,
+    }
+}
 
 #[derive(Clone, Deserialize)]
 pub struct DownloadFile {
@@ -457,6 +514,22 @@ struct ModrinthVersion {
     dependencies: Vec<ModrinthDependency>,
 }
 
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct ManagedModsManifest {
+    minecraft_version: String,
+    generated_at: u64,
+    files: Vec<ManagedModEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ManagedModEntry {
+    project_id: String,
+    filename: String,
+    sha1: String,
+}
+
 pub async fn compatible_fabric_loader(
     version: &str,
     client: &reqwest::Client,
@@ -532,7 +605,7 @@ pub async fn install_modrinth_projects(
     fs::create_dir_all(mods).map_err(|e| e.to_string())?;
     let mut queue: VecDeque<String> = projects.iter().cloned().collect();
     let mut visited = HashSet::new();
-    let mut selected = Vec::new();
+    let mut selected: Vec<(String, ModrinthFile)> = Vec::new();
     let mut unavailable = Vec::new();
     while let Some(project) = queue.pop_front() {
         if !visited.insert(project.clone()) {
@@ -567,40 +640,123 @@ pub async fn install_modrinth_projects(
             .find(|file| file.primary)
             .or_else(|| chosen.files.first())
             .ok_or_else(|| format!("{project} no publicó un archivo descargable"))?;
-        selected.push(file.clone());
+        validate_download_filename(&file.filename)?;
+        selected.push((project, file.clone()));
     }
-    let wanted: HashSet<_> = selected.iter().map(|file| file.filename.as_str()).collect();
-    if replace_existing {
-        for entry in fs::read_dir(mods)
-            .map_err(|e| e.to_string())?
-            .filter_map(Result::ok)
-        {
-            let path = entry.path();
-            if path.extension().and_then(|value| value.to_str()) == Some("jar")
-                && !wanted.contains(
-                    path.file_name()
-                        .and_then(|value| value.to_str())
-                        .unwrap_or(""),
-                )
-            {
-                fs::remove_file(path).map_err(|e| e.to_string())?;
-            }
+    let wanted: HashSet<_> = selected
+        .iter()
+        .map(|(_, file)| file.filename.as_str())
+        .collect();
+    let manifest_path = mods.join(".aureus-mods.json");
+    let previous = fs::read(&manifest_path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<ManagedModsManifest>(&bytes).ok())
+        .unwrap_or_default();
+    let previously_managed: HashSet<String> = previous
+        .files
+        .iter()
+        .map(|entry| entry.filename.clone())
+        .collect();
+    for (_, file) in &selected {
+        let destination = mods.join(&file.filename);
+        if destination.exists() && !previously_managed.contains(&file.filename) {
+            return Err(format!(
+                "El mod {} ya existe y no es administrado por Aureus; se conservó sin cambios",
+                file.filename
+            ));
         }
     }
-    let results = stream::iter(selected.into_iter().map(|file| {
+    let stage = mods.join(".aureus-stage");
+    if stage.exists() {
+        fs::remove_dir_all(&stage).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir_all(&stage).map_err(|e| e.to_string())?;
+    let downloads = selected.clone();
+    let results = stream::iter(downloads.into_iter().map(|(_, file)| {
         let client = client.clone();
-        let destination = mods.join(&file.filename);
+        let destination = stage.join(&file.filename);
         let sha1 = file.hashes.get("sha1").cloned().unwrap_or_default();
-        async move { verified_download(&client, &file.url, &sha1, &destination).await }
+        let url = file.url.clone();
+        async move { verified_download(&client, &url, &sha1, &destination).await }
     }))
     .buffer_unordered(6)
     .collect::<Vec<_>>()
     .await;
     let mut count = 0;
     for result in results {
-        result?;
+        if let Err(error) = result {
+            let _ = fs::remove_dir_all(&stage);
+            return Err(error);
+        }
         count += 1;
     }
+    let rollback = mods.join(".aureus-rollback");
+    if rollback.exists() {
+        fs::remove_dir_all(&rollback).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir_all(&rollback).map_err(|e| e.to_string())?;
+    let mut affected = previously_managed.clone();
+    affected.extend(selected.iter().map(|(_, file)| file.filename.clone()));
+    for filename in affected {
+        let should_remove = replace_existing || wanted.contains(filename.as_str());
+        let path = mods.join(&filename);
+        if should_remove && path.exists() {
+            if let Err(error) = replace_file(&path, &rollback.join(&filename)) {
+                let rollback_error = restore_transaction(mods, &rollback, &[]).err();
+                let _ = fs::remove_dir_all(&stage);
+                return Err(match rollback_error {
+                    Some(rollback_error) => {
+                        format!("{error}; además falló la reversión: {rollback_error}")
+                    }
+                    None => error,
+                });
+            }
+        }
+    }
+    let mut installed = Vec::new();
+    for (_, file) in &selected {
+        if let Err(error) = replace_file(&stage.join(&file.filename), &mods.join(&file.filename)) {
+            let rollback_error = restore_transaction(mods, &rollback, &installed).err();
+            let _ = fs::remove_dir_all(&stage);
+            return Err(match rollback_error {
+                Some(rollback_error) => {
+                    format!("{error}; además falló la reversión: {rollback_error}")
+                }
+                None => error,
+            });
+        }
+        installed.push(file.filename.clone());
+    }
+    let manifest = ManagedModsManifest {
+        minecraft_version: version.into(),
+        generated_at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+        files: selected
+            .into_iter()
+            .map(|(project_id, file)| ManagedModEntry {
+                project_id,
+                filename: file.filename,
+                sha1: file.hashes.get("sha1").cloned().unwrap_or_default(),
+            })
+            .collect(),
+    };
+    let manifest_temp = manifest_path.with_extension("json.tmp");
+    let manifest_bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?;
+    if let Err(error) = fs::write(&manifest_temp, manifest_bytes)
+        .map_err(|e| e.to_string())
+        .and_then(|_| replace_file(&manifest_temp, &manifest_path))
+    {
+        let rollback_error = restore_transaction(mods, &rollback, &installed).err();
+        let _ = fs::remove_dir_all(&stage);
+        return Err(match rollback_error {
+            Some(rollback_error) => format!("{error}; además falló la reversión: {rollback_error}"),
+            None => error,
+        });
+    }
+    let _ = fs::remove_dir_all(&stage);
+    let _ = fs::remove_dir_all(&rollback);
     Ok((count, unavailable))
 }
 
@@ -619,24 +775,59 @@ async fn verified_download(
             return Ok(false);
         }
     }
-    let bytes = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?
-        .bytes()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !sha1.is_empty() && sha1_hex(&bytes) != sha1 {
-        return Err(format!("Hash inválido al descargar {url}"));
-    }
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let temporary = destination.with_extension("download");
-    fs::write(&temporary, &bytes).map_err(|e| e.to_string())?;
+    let partial_size = fs::metadata(&temporary)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    let mut request = client.get(url);
+    if partial_size > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={partial_size}-"));
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())?;
+    let resumed = partial_size > 0 && response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
+    let remaining = response.content_length().unwrap_or(0);
+    tracker().total.fetch_add(
+        if resumed {
+            partial_size + remaining
+        } else {
+            remaining
+        },
+        Ordering::Relaxed,
+    );
+    if resumed {
+        tracker()
+            .downloaded
+            .fetch_add(partial_size, Ordering::Relaxed);
+    }
+    let mut output = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(resumed)
+        .truncate(!resumed)
+        .open(&temporary)
+        .map_err(|e| e.to_string())?;
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        output.write_all(&chunk).map_err(|e| e.to_string())?;
+        tracker()
+            .downloaded
+            .fetch_add(chunk.len() as u64, Ordering::Relaxed);
+    }
+    output.flush().map_err(|e| e.to_string())?;
+    let bytes = fs::read(&temporary).map_err(|e| e.to_string())?;
+    if !sha1.is_empty() && sha1_hex(&bytes) != sha1 {
+        let _ = fs::remove_file(&temporary);
+        return Err(format!("Hash inválido al descargar {url}"));
+    }
     replace_file(&temporary, destination)?;
     Ok(true)
 }
@@ -647,6 +838,39 @@ fn replace_file(source: &Path, destination: &Path) -> Result<(), String> {
         fs::remove_file(destination).map_err(|e| e.to_string())?;
     }
     fs::rename(source, destination).map_err(|e| e.to_string())
+}
+
+fn validate_download_filename(filename: &str) -> Result<(), String> {
+    let mut components = Path::new(filename).components();
+    let valid = matches!(components.next(), Some(std::path::Component::Normal(_)))
+        && components.next().is_none()
+        && !filename.contains(['/', '\\'])
+        && !filename.starts_with('.')
+        && filename.to_ascii_lowercase().ends_with(".jar");
+    if valid {
+        Ok(())
+    } else {
+        Err(format!("Nombre de archivo de mod no válido: {filename}"))
+    }
+}
+
+fn restore_transaction(mods: &Path, rollback: &Path, installed: &[String]) -> Result<(), String> {
+    for filename in installed {
+        let path = mods.join(filename);
+        if path.exists() {
+            fs::remove_file(path).map_err(|e| e.to_string())?;
+        }
+    }
+    if rollback.exists() {
+        for entry in fs::read_dir(rollback)
+            .map_err(|e| e.to_string())?
+            .filter_map(Result::ok)
+        {
+            replace_file(&entry.path(), &mods.join(entry.file_name()))?;
+        }
+        fs::remove_dir_all(rollback).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 pub async fn install_official_version(
@@ -772,4 +996,55 @@ pub async fn install_official_version(
         asset_index_id: meta.asset_index.id,
         downloaded_files: downloaded,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_directory(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "aureus-{name}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn mod_filenames_cannot_escape_the_instance() {
+        assert!(validate_download_filename("sodium-1.0.jar").is_ok());
+        assert!(validate_download_filename("../outside.jar").is_err());
+        assert!(validate_download_filename("folder/mod.jar").is_err());
+        assert!(validate_download_filename("folder\\mod.jar").is_err());
+        assert!(validate_download_filename(".hidden.jar").is_err());
+        assert!(validate_download_filename("readme.txt").is_err());
+    }
+
+    #[test]
+    fn failed_mod_transaction_restores_previous_files() {
+        let root = test_directory("rollback");
+        let mods = root.join("mods");
+        let rollback = mods.join(".aureus-rollback");
+        fs::create_dir_all(&rollback).unwrap();
+        fs::write(mods.join("new.jar"), b"new").unwrap();
+        fs::write(rollback.join("old.jar"), b"old").unwrap();
+
+        restore_transaction(&mods, &rollback, &["new.jar".into()]).unwrap();
+
+        assert!(!mods.join("new.jar").exists());
+        assert_eq!(fs::read(mods.join("old.jar")).unwrap(), b"old");
+        assert!(!rollback.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn maven_coordinates_use_platform_neutral_paths() {
+        let root = Path::new("libraries");
+        let path = maven_library_path(root, "org.example:demo:1.2.3:all").unwrap();
+        assert_eq!(path, root.join("org/example/demo/1.2.3/demo-1.2.3-all.jar"));
+        assert!(maven_library_path(root, "invalid").is_none());
+    }
 }

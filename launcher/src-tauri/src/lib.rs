@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::{distr::Alphanumeric, Rng};
 use serde::Deserialize;
@@ -348,7 +350,7 @@ struct TokenResponse {
 #[serde(rename_all = "camelCase")]
 struct LauncherStatus {
     client_id: &'static str,
-    minecraft_version: &'static str,
+    minecraft_version: String,
     minecraft_directory: Option<String>,
     mod_installed: bool,
     java_available: bool,
@@ -477,12 +479,20 @@ fn selected_instance_path() -> Result<PathBuf, String> {
     Ok(aureus_data_directory()?.join("selected-instance.txt"))
 }
 
+fn valid_local_identifier(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_')
+        })
+}
+
 fn read_selected_version() -> String {
     selected_version_path()
         .ok()
         .and_then(|path| fs::read_to_string(path).ok())
         .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+        .filter(|value| valid_local_identifier(value))
         .unwrap_or_else(|| MINECRAFT_VERSION.into())
 }
 fn read_selected_instance() -> String {
@@ -490,7 +500,7 @@ fn read_selected_instance() -> String {
         .ok()
         .and_then(|path| fs::read_to_string(path).ok())
         .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+        .filter(|value| valid_local_identifier(value))
         .unwrap_or_else(read_selected_version)
 }
 
@@ -571,12 +581,7 @@ fn selected_version_status() -> Result<SelectedVersionStatus, String> {
 
 #[tauri::command]
 fn select_version(version: String) -> Result<String, String> {
-    if version.is_empty()
-        || version.len() > 64
-        || !version
-            .chars()
-            .all(|value| value.is_ascii_alphanumeric() || matches!(value, '.' | '-' | '_'))
-    {
+    if !valid_local_identifier(&version) {
         return Err("Versión de Minecraft no válida".into());
     }
     fs::write(selected_version_path()?, &version).map_err(|error| error.to_string())?;
@@ -601,6 +606,7 @@ async fn install_selected_version(
     app: tauri::AppHandle,
     runtime: State<'_, RuntimeState>,
 ) -> Result<String, String> {
+    version_manager::reset_download_metrics();
     runtime.cancel_requested.store(false, Ordering::SeqCst);
     let version = read_selected_version();
     emit_launch(
@@ -627,6 +633,15 @@ async fn install_selected_version(
     let instance_dir = aureus_data_directory()?
         .join("instances-data")
         .join(&version);
+    if instance_dir.join("aureus-instance.json").exists() {
+        emit_launch(
+            &app,
+            58,
+            "Respaldo",
+            "Guardando la instalación actual antes de reparar",
+        );
+        professional::create_instance_backup(version.clone())?;
+    }
     fs::write(selected_instance_path()?, &version).map_err(|error| error.to_string())?;
     fs::create_dir_all(instance_dir.join("mods")).map_err(|error| error.to_string())?;
     fs::create_dir_all(instance_dir.join("resourcepacks")).map_err(|error| error.to_string())?;
@@ -880,10 +895,25 @@ fn minecraft_directory() -> Option<PathBuf> {
 #[tauri::command]
 fn launcher_status() -> LauncherStatus {
     let minecraft = minecraft_directory();
-    let mod_installed = minecraft
+    let version = read_selected_version();
+    let instance_root = aureus_data_directory()
+        .unwrap_or_else(|_| PathBuf::new())
+        .join("instances-data")
+        .join(read_selected_instance());
+    let descriptor = fs::read(instance_root.join("aureus-instance.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok());
+    let fabric_installed = descriptor
         .as_ref()
-        .map(|path| path.join("mods").join(MOD_FILE_NAME).exists())
-        .unwrap_or(false);
+        .and_then(|value| value["state"].as_str())
+        == Some("fabric-ready");
+    let mod_installed = fabric_installed
+        && fs::read_dir(instance_root.join("mods"))
+            .ok()
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .any(|entry| entry.path().extension().and_then(|value| value.to_str()) == Some("jar"));
     let java_available = version_manager::find_java(
         &aureus_data_directory()
             .unwrap_or_else(|_| PathBuf::new())
@@ -894,24 +924,26 @@ fn launcher_status() -> LauncherStatus {
             .arg("-version")
             .output()
             .is_ok();
-    let fabric_installed = minecraft
-        .as_ref()
-        .map(|path| {
-            path.join("versions")
-                .join(FABRIC_PROFILE)
-                .join(format!("{FABRIC_PROFILE}.json"))
-                .exists()
-        })
-        .unwrap_or(false);
-    let fabric_api_installed = minecraft
-        .as_ref()
-        .map(|path| path.join("mods").join(FABRIC_API_FILE_NAME).exists())
-        .unwrap_or(false);
+    let fabric_api_installed = fs::read_dir(instance_root.join("mods"))
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .any(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("fabric-api-")
+        });
 
     LauncherStatus {
         client_id: CLIENT_ID,
-        minecraft_version: MINECRAFT_VERSION,
-        minecraft_directory: minecraft.map(|path| path.display().to_string()),
+        minecraft_version: version,
+        minecraft_directory: descriptor
+            .as_ref()
+            .and_then(|value| value["gameDirectory"].as_str())
+            .map(str::to_owned)
+            .or_else(|| minecraft.map(|path| path.display().to_string())),
         mod_installed,
         java_available,
         fabric_installed,
@@ -2009,18 +2041,27 @@ pub fn run() {
             professional::duplicate_managed_instance,
             professional::delete_managed_instance,
             professional::list_instance_content,
+            professional::verify_instance_integrity,
             professional::toggle_instance_content,
             professional::create_instance_backup,
+            professional::list_instance_backups,
             professional::restore_instance_backup,
             professional::export_instance,
             professional::import_instance,
+            professional::export_profile,
+            professional::import_profile,
             professional::recommend_hardware_profile,
+            professional::system_telemetry,
+            professional::clean_safe_caches,
+            professional::apply_profile_content_policy,
+            professional::analyze_mod_impact,
             professional::sync_client_config,
             professional::analyze_latest_crash,
             professional::search_modrinth,
             professional::install_modrinth,
             professional::enable_safe_mode,
             professional::read_benchmark,
+            version_manager::download_metrics,
             list_minecraft_accounts,
             switch_minecraft_account,
             logout_minecraft_account,
