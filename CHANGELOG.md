@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7
+
+- Rediseña el menú dentro de Minecraft como un panel de módulos visuales con estado verde/gris.
+- Oculta por defecto la línea técnica con los nombres de los mods instalados, incluso al migrar configuraciones antiguas.
+- Añade módulos propios de dirección y bioma al HUD configurable.
+- Incorpora para Fabric 1.21.11 HUD editable, minimapa, tooltips de shulkers, barras de efectos, inventario organizado, Mouse Tweaks y HUD de montura.
+- Resuelve automáticamente esos complementos y sus dependencias en otras versiones cuando exista una compilación compatible.
+
 ## 0.3.6
 
 - Simplifica Inicio a una única acción PLAY que prepara Minecraft automáticamente.

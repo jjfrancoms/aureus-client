@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ClientConfig {
-    private static final int CURRENT_CONFIG_VERSION = 3;
+    private static final int CURRENT_CONFIG_VERSION = 4;
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("aureus-client.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static ClientConfig instance = new ClientConfig();
@@ -30,7 +30,9 @@ public final class ClientConfig {
     public boolean showArmor = true;
     public boolean showEffects = true;
     public boolean showMemory = false;
-    public boolean showCompatibility = true;
+    public boolean showCompatibility = false;
+    public boolean showBiome = true;
+    public boolean showDirection = true;
     public boolean reduceBackgroundFps = true;
     public boolean compactHud = true;
     public boolean limitParticles = true;
@@ -79,6 +81,7 @@ public final class ClientConfig {
                 instance.mipmapLevels = 0;
                 instance.entityShadows = false;
                 instance.viewBobbing = false;
+                instance.showCompatibility = false;
                 instance.configVersion = CURRENT_CONFIG_VERSION;
                 save();
             }

@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
@@ -81,18 +82,20 @@ public final class ConfigScreen extends Screen {
     }
 
     private void buildHudPage() {
-        addToggle("FPS", () -> config().showFps, value -> config().showFps = value, 0);
-        addToggle("Frame time", () -> config().showFrameTime, value -> config().showFrameTime = value, 1); nextRow();
-        addToggle("CPS", () -> config().showCps, value -> config().showCps = value, 0);
-        addToggle("Teclas", () -> config().showKeystrokes, value -> config().showKeystrokes = value, 1); nextRow();
-        addToggle("Ping", () -> config().showPing, value -> config().showPing = value, 0);
-        addToggle("Cooldown", () -> config().showAttackCooldown, value -> config().showAttackCooldown = value, 1); nextRow();
-        addToggle("Armadura", () -> config().showArmor, value -> config().showArmor = value, 0);
-        addToggle("Efectos", () -> config().showEffects, value -> config().showEffects = value, 1); nextRow();
-        addToggle("Coordenadas", () -> config().showCoordinates, value -> config().showCoordinates = value, 0);
-        addToggle("Memoria", () -> config().showMemory, value -> config().showMemory = value, 1); nextRow();
-        addToggle("Métricas sesión", () -> config().showSessionMetrics, value -> config().showSessionMetrics = value, 0);
-        addToggle("Mods detectados", () -> config().showCompatibility, value -> config().showCompatibility = value, 1); nextRow();
+        addModule("▣", "FPS", () -> config().showFps, value -> config().showFps = value, 0);
+        addModule("⌁", "Frame time", () -> config().showFrameTime, value -> config().showFrameTime = value, 1);
+        addModule("●", "CPS", () -> config().showCps, value -> config().showCps = value, 2);
+        addModule("W", "Teclas", () -> config().showKeystrokes, value -> config().showKeystrokes = value, 3);
+        addModule("◉", "Ping", () -> config().showPing, value -> config().showPing = value, 4);
+        addModule("+", "Cooldown", () -> config().showAttackCooldown, value -> config().showAttackCooldown = value, 5);
+        addModule("◇", "Armadura", () -> config().showArmor, value -> config().showArmor = value, 6);
+        addModule("✦", "Efectos", () -> config().showEffects, value -> config().showEffects = value, 7);
+        addModule("X", "Coordenadas", () -> config().showCoordinates, value -> config().showCoordinates = value, 8);
+        addModule("N", "Dirección", () -> config().showDirection, value -> config().showDirection = value, 9);
+        addModule("♧", "Bioma", () -> config().showBiome, value -> config().showBiome = value, 10);
+        addModule("▤", "Memoria", () -> config().showMemory, value -> config().showMemory = value, 11);
+        addModule("↗", "Métricas", () -> config().showSessionMetrics, value -> config().showSessionMetrics = value, 12);
+        nextY = 70 + ((13 + moduleColumns() - 1) / moduleColumns()) * 25 + 8;
         addCycle("HUD X", () -> config().hudX, value -> config().hudX = value, 0, 500, 10, " px", 0);
         addCycle("HUD Y", () -> config().hudY, value -> config().hudY = value, 0, 500, 10, " px", 1); nextRow();
         addCycle("Teclas X", () -> config().keysXPercent, value -> config().keysXPercent = value, 10, 90, 5, "%", 0);
@@ -149,6 +152,19 @@ public final class ConfigScreen extends Screen {
     private int sidebarWidth() { return config().menuCollapsed ? 48 : Math.min(172, Math.max(140, width / 5)); }
     private int columnWidth() { return Math.max(120, (contentWidth - 8) / 2); }
     private int columnX(int column) { return contentLeft + column * (columnWidth() + 8); }
+    private int moduleColumns() { return contentWidth >= 540 ? 3 : 2; }
+    private int moduleWidth() { return Math.max(100, (contentWidth - (moduleColumns() - 1) * 8) / moduleColumns()); }
+    private void addModule(String icon, String label, BooleanSupplier getter, BooleanSetter setter, int index) {
+        int columns = moduleColumns();
+        int x = contentLeft + (index % columns) * (moduleWidth() + 8);
+        int y = 70 + (index / columns) * 25;
+        addRenderableWidget(Button.builder(moduleLabel(icon, label, getter.getAsBoolean()), button -> {
+            boolean value = !getter.getAsBoolean();
+            setter.set(value);
+            button.setMessage(moduleLabel(icon, label, value));
+            applyLive();
+        }).bounds(x, y, moduleWidth(), 20).build());
+    }
 
     private void addToggle(String label, BooleanSupplier getter, BooleanSetter setter, int column) {
         addRenderableWidget(Button.builder(toggleLabel(label, getter.getAsBoolean()), button -> {
@@ -175,6 +191,10 @@ public final class ConfigScreen extends Screen {
     private void nextRow() { nextY += 25; }
     private static ClientConfig config() { return ClientConfig.get(); }
     private static Component toggleLabel(String label, boolean enabled) { return Component.literal(label + ": " + (enabled ? "ON" : "OFF")); }
+    private static Component moduleLabel(String icon, String label, boolean enabled) {
+        return Component.literal((enabled ? "●  " : "○  ") + icon + "  " + label)
+                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.GRAY);
+    }
     private static Component valueLabel(String label, int value, String suffix) { return Component.literal(label + ": " + value + suffix); }
     private static Component profileLabel() { return Component.literal("Perfil: " + config().profile); }
 
