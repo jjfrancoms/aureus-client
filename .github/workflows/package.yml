@@ -47,7 +47,7 @@ jobs:
           tagName: v__VERSION__
           releaseName: Aureus v__VERSION__
           releaseBody: Descarga gratuita de Aureus para macOS y Windows. Incluye actualización automática firmada.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
       - uses: actions/upload-artifact@v4
         with:
@@ -60,3 +60,12 @@ jobs:
             launcher/src-tauri/target/release/bundle/**/*.sig
             launcher/src-tauri/target/release/bundle/**/latest.json
           if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar solo cuando macOS y Windows estén completos
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest
