@@ -1,6 +1,6 @@
 [package]
 name = "aureus-launcher"
-version = "0.3.8"
+version = "0.3.9"
 description = "Launcher general, seguro y optimizado para Minecraft Java"
 authors = ["Aureus Team"]
 edition = "2021"

@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::{
     fs,
     io::Read,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -126,7 +126,14 @@ fn write_instances(items: &[ManagedInstance]) -> Result<(), String> {
         serde_json::to_vec_pretty(items).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
-    fs::rename(temp, path).map_err(|e| e.to_string())
+    replace_file(&temp, &path)
+}
+fn replace_file(source: &Path, destination: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    if destination.exists() {
+        fs::remove_file(destination).map_err(|e| e.to_string())?;
+    }
+    fs::rename(source, destination).map_err(|e| e.to_string())
 }
 fn copy_tree(source: &Path, destination: &Path) -> Result<(), String> {
     fs::create_dir_all(destination).map_err(|e| e.to_string())?;
@@ -552,16 +559,18 @@ pub fn sync_client_config(
     let config = serde_json::json!({
         "showFps":true, "showFrameTime":true, "showSessionMetrics":true, "showCps":true, "showKeystrokes":true,
         "showPing":true, "showCoordinates":false, "showAttackCooldown":true, "showArmor":true, "showEffects":true,
-        "showMemory":false, "showCompatibility":true, "reduceBackgroundFps":true, "compactHud":true, "limitParticles":true,
+        "showMemory":false, "showCompatibility":false, "showItemCounters":true, "showBiome":false, "showDirection":true,
+        "reduceBackgroundFps":true, "compactHud":true, "limitParticles":true,
         "adaptiveParticles":true, "applyVanillaOptimizations":true, "backgroundFps":30, "maxParticlesPerTick":25,
         "targetFps":target_fps.clamp(30,240), "renderDistance":render_distance.clamp(2,32), "simulationDistance":simulation_distance.clamp(5,32),
         "entityDistancePercent":50, "biomeBlendRadius":0, "mipmapLevels":0, "entityShadows":false, "viewBobbing":false,
-        "menuCollapsed":false, "hudX":6, "hudY":6, "keysXPercent":50, "keysY":6, "serverProfiles":{}, "profile":profile, "configVersion":3
+        "menuCollapsed":false, "hudX":6, "hudY":6, "keysXPercent":50, "keysY":6, "serverProfiles":{}, "profile":profile, "configVersion":4
     });
     let path = instance_root(&instance_id)?
         .join("config")
         .join("aureus-client.json");
-    fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    let parent = path.parent().ok_or("Ruta de configuración no válida")?;
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     fs::write(
         &path,
         serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
@@ -657,7 +666,7 @@ pub async fn search_modrinth(query: String, version: String) -> Result<Vec<Modri
     ])
     .map_err(|e| e.to_string())?;
     let response: ModrinthSearch = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?
         .get("https://api.modrinth.com/v2/search")
@@ -680,7 +689,7 @@ pub async fn install_modrinth(
     project_id: String,
 ) -> Result<String, String> {
     let client = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?;
     let result = crate::version_manager::install_modrinth_projects(

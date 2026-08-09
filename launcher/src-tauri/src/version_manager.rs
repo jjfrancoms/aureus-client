@@ -110,7 +110,7 @@ struct AdoptiumPackage {
     name: String,
 }
 
-fn find_java(root: &Path) -> Option<PathBuf> {
+pub(crate) fn find_java(root: &Path) -> Option<PathBuf> {
     let executable = if cfg!(target_os = "windows") {
         "javaw.exe"
     } else {
@@ -507,6 +507,7 @@ pub async fn resolve_modrinth_mods(
         "xaeros-minimap",
         "better-mount-hud",
         "item-counter-fx",
+        "simple-voice-chat",
     ];
     install_modrinth_projects(
         version,
@@ -636,8 +637,16 @@ async fn verified_download(
     }
     let temporary = destination.with_extension("download");
     fs::write(&temporary, &bytes).map_err(|e| e.to_string())?;
-    fs::rename(temporary, destination).map_err(|e| e.to_string())?;
+    replace_file(&temporary, destination)?;
     Ok(true)
+}
+
+fn replace_file(source: &Path, destination: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    if destination.exists() {
+        fs::remove_file(destination).map_err(|e| e.to_string())?;
+    }
+    fs::rename(source, destination).map_err(|e| e.to_string())
 }
 
 pub async fn install_official_version(

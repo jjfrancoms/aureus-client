@@ -1,5 +1,5 @@
 use aureus_launcher_lib::version_manager;
-use std::{env, fs, path::PathBuf};
+use std::{env, fs};
 
 fn main() {
     let version = env::args().nth(1).unwrap_or_else(|| "1.21.1".into());
@@ -42,7 +42,7 @@ fn main() {
         let classpath =
             version_manager::classpath(&installed.version_json, &minecraft, &installed.client_jar)
                 .expect("classpath");
-        let report = serde_json::json!({"version":version,"javaMajor":metadata.java_major,"java":java,"loader":loader,"mods":mods,"unavailable":unavailable,"classpath":classpath.len(),"natives":PathBuf::from(natives).exists(),"mainClass":metadata.main_class});
+        let report = serde_json::json!({"version":version,"javaMajor":metadata.java_major,"java":java,"loader":loader,"mods":mods,"unavailable":unavailable,"classpath":classpath.len(),"natives":natives.exists(),"mainClass":metadata.main_class});
         println!("{}", serde_json::to_string_pretty(&report).unwrap());
     });
 }
