@@ -20,9 +20,9 @@ pub mod version_manager;
 
 const CLIENT_ID: &str = "4e82ebb8-bdf1-48f8-a1c2-8a62cd1be7a8";
 const MINECRAFT_VERSION: &str = "1.21.11";
-const MOD_FILE_NAME: &str = "aureus-client-0.3.0-minecraft-1.21.11.jar";
+const MOD_FILE_NAME: &str = "aureus-client-minecraft-1.21.11.jar";
 const MOD_BYTES: &[u8] =
-    include_bytes!("../../../outputs/aureus-client-0.3.0-minecraft-1.21.11.jar");
+    include_bytes!("../../../outputs/aureus-client-minecraft-1.21.11.jar");
 const FABRIC_API_FILE_NAME: &str = "fabric-api-0.141.6+1.21.11.jar";
 const FABRIC_API_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-api-0.141.6+1.21.11.jar");
 const FABRIC_INSTALLER_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-installer-1.1.2.jar");
