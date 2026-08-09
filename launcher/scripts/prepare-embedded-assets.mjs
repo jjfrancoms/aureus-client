@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,9 +18,12 @@ const assets = [
 ];
 
 await mkdir(outputDirectory, { recursive: true });
+const gradleProperties = await readFile(resolve(repositoryDirectory, "gradle.properties"), "utf8");
+const modVersion = gradleProperties.match(/^mod_version=(.+)$/m)?.[1]?.trim();
+if (!modVersion) throw new Error("No se encontró mod_version en gradle.properties");
 await copyFile(
-  resolve(repositoryDirectory, "build/libs/aureus-client-0.3.0.jar"),
-  resolve(outputDirectory, "aureus-client-0.3.0-minecraft-1.21.11.jar"),
+  resolve(repositoryDirectory, `build/libs/aureus-client-${modVersion}.jar`),
+  resolve(outputDirectory, "aureus-client-minecraft-1.21.11.jar"),
 );
 
 for (const asset of assets) {
