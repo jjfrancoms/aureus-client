@@ -9,6 +9,8 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -25,6 +27,14 @@ const FABRIC_API_FILE_NAME: &str = "fabric-api-0.141.6+1.21.11.jar";
 const FABRIC_API_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-api-0.141.6+1.21.11.jar");
 const FABRIC_INSTALLER_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-installer-1.1.2.jar");
 const FABRIC_PROFILE: &str = "fabric-loader-0.19.3-1.21.11";
+
+#[cfg(target_os = "windows")]
+fn hidden_windows_command(program: &str) -> std::process::Command {
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let mut command = std::process::Command::new(program);
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
+}
 
 struct PendingLogin {
     receiver: mpsc::Receiver<Result<String, String>>,
@@ -438,7 +448,7 @@ fn ensure_not_cancelled(runtime: &RuntimeState) -> Result<(), String> {
 
 fn detect_minecraft_pid() -> Option<u32> {
     #[cfg(target_os = "windows")]
-    let output = std::process::Command::new("powershell").args(["-NoProfile", "-Command", "(Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -like '*aureus-launcher*'} | Select-Object -First 1).ProcessId"]).output().ok()?;
+    let output = hidden_windows_command("powershell").args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -like '*aureus-launcher*'} | Select-Object -First 1).ProcessId"]).output().ok()?;
     #[cfg(not(target_os = "windows"))]
     let output = std::process::Command::new("pgrep")
         .args(["-f", "minecraft.launcher.brand=aureus-launcher"])
