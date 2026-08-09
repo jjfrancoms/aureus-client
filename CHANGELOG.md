@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2
+
+- Añade Debugify y FPSFlow al stack estable de Fabric 1.21.11.
+- Añade Bura y Rhenium como experimentales opcionales con respaldo previo.
+- Incorpora perfiles Competitivo PvP y Batería.
+- Añade comparación A/B de FPS, 1% low y memoria.
+- Sincroniza automáticamente distancia, simulación y límite de FPS con el mod.
+
 ## 0.3.1
 
 - Preparar Minecraft ya no inicia el juego.

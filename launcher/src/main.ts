@@ -477,13 +477,21 @@ async function login() {
 function updateProfile(profile: string) {
   const copy: Record<string, string> = {
     custom: "5 GB de RAM, 12 chunks visibles y 8 de simulación, conservando partículas y efectos reducidos.",
+    competitive: "Prioriza latencia, 1% low y claridad PvP: partículas mínimas, sombras fuera y distancia estable.",
     memory_saver: "Reduce al mínimo seguro la distancia, efectos y memoria asignada para dejar más RAM libre al sistema.",
+    battery: "Limita FPS en segundo plano, distancia y efectos para reducir consumo, temperatura y ruido del portátil.",
     max: "Reduce efectos y carga visual para priorizar la menor latencia y el máximo número de FPS.",
     balanced: "Mantiene buena visibilidad y estabilidad sin sacrificar demasiado rendimiento.",
     quality: "Conserva más detalle visual para equipos con margen de rendimiento.",
   };
   el("#profile-info").textContent = copy[profile] ?? copy.balanced;
   localStorage.setItem("aureus.profile", profile);
+  const tuning: Record<string, [number, number, number]> = {
+    competitive: [8, 6, 240], memory_saver: [6, 5, 90], battery: [6, 5, 60],
+    max: [6, 5, 240], balanced: [10, 8, 144], quality: [16, 10, 120], custom: [12, 8, 144],
+  };
+  const [renderDistance, simulationDistance, targetFps] = tuning[profile] ?? tuning.balanced;
+  void invoke("sync_client_config", { instanceId: selectedInstanceId, profile: profile.toUpperCase(), renderDistance, simulationDistance, targetFps });
   if (activeInstance) {
     activeInstance.performanceProfile = profile.toUpperCase();
     void invoke("save_instance", { instance: activeInstance });
@@ -511,6 +519,40 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   el("#recommend-profile").addEventListener("click", recommendProfile);
   el("#read-benchmark").addEventListener("click", async () => { try { const report = await invoke<BenchmarkReport>("read_benchmark", { instanceId: selectedInstanceId }); el("#benchmark-summary").textContent = report.available ? `${report.averageFps} FPS · 1% low ${report.onePercentLow} · ${report.memoryUsedMb} MB — ${report.recommendation}` : report.recommendation; } catch (error) { showNotice(String(error), "error"); } });
+  el("#save-baseline").addEventListener("click", async () => {
+    try {
+      const report = await invoke<BenchmarkReport>("read_benchmark", { instanceId: selectedInstanceId });
+      if (!report.available) return showNotice(report.recommendation, "neutral");
+      localStorage.setItem(`aureus.baseline.${selectedInstanceId}`, JSON.stringify(report));
+      el("#benchmark-comparison").textContent = `Referencia: ${report.averageFps} FPS · 1% low ${report.onePercentLow} · ${report.memoryUsedMb} MB`;
+      showNotice("Referencia A guardada. Cambia la configuración, juega y luego compara.", "success");
+    } catch (error) { showNotice(String(error), "error"); }
+  });
+  el("#compare-benchmark").addEventListener("click", async () => {
+    const stored = localStorage.getItem(`aureus.baseline.${selectedInstanceId}`);
+    if (!stored) return showNotice("Primero guarda una referencia A.", "neutral");
+    try {
+      const before = JSON.parse(stored) as BenchmarkReport;
+      const after = await invoke<BenchmarkReport>("read_benchmark", { instanceId: selectedInstanceId });
+      if (!after.available) return showNotice(after.recommendation, "neutral");
+      const fps = after.averageFps - before.averageFps;
+      const low = after.onePercentLow - before.onePercentLow;
+      const ram = after.memoryUsedMb - before.memoryUsedMb;
+      el("#benchmark-comparison").textContent = `Resultado B: ${fps >= 0 ? "+" : ""}${fps} FPS · ${low >= 0 ? "+" : ""}${low} en 1% low · ${ram >= 0 ? "+" : ""}${ram} MB`;
+    } catch (error) { showNotice(String(error), "error"); }
+  });
+  el("#apply-performance-mods").addEventListener("click", async () => {
+    const projects = [el<HTMLInputElement>("#enable-bura").checked && "bura", el<HTMLInputElement>("#enable-rhenium").checked && "rhenium-mod"].filter(Boolean) as string[];
+    if (!projects.length) return showNotice("No seleccionaste mods experimentales.", "neutral");
+    const button = el<HTMLButtonElement>("#apply-performance-mods"); button.disabled = true;
+    try {
+      await invoke("create_instance_backup", { instanceId: selectedInstanceId });
+      for (const projectId of projects) await invoke("install_modrinth", { instanceId: selectedInstanceId, version: selectedMinecraftVersion, projectId });
+      showNotice(`${projects.length} optimizaciones experimentales instaladas. Se creó una selección reversible.`, "success");
+      await showInstanceContent();
+    } catch (error) { showNotice(`No se pudo aplicar: ${String(error)}`, "error"); }
+    finally { button.disabled = false; }
+  });
   el<HTMLSelectElement>("#managed-instance").addEventListener("change", async event => { const id = (event.target as HTMLSelectElement).value; if (!id) return; selectedInstanceId = id; selectedMinecraftVersion = await invoke<string>("select_managed_instance", { id }); el<HTMLSelectElement>("#minecraft-version").value = selectedMinecraftVersion; all(".selected-version-label").forEach(label => label.textContent = selectedMinecraftVersion); await refresh(); });
   el("#duplicate-instance").addEventListener("click", async () => { const name = window.prompt("Nombre de la copia", `Copia de ${selectedInstanceId}`)?.trim(); if (!name) return; const id = `${selectedMinecraftVersion}-${Date.now()}`; try { await invoke("duplicate_managed_instance", { sourceId:selectedInstanceId, newId:id, newName:name }); await refreshManagedInstances(id); selectedInstanceId = id; await invoke("select_managed_instance", { id }); showNotice("Instancia duplicada y seleccionada.", "success"); } catch (error) { showNotice(String(error), "error"); } });
   el("#import-instance").addEventListener("click", async () => { const archivePath = window.prompt("Ruta del archivo .aureuspack")?.trim(); if (!archivePath) return; const id = `${selectedMinecraftVersion}-import-${Date.now()}`; try { await invoke("import_instance", { archivePath, newId:id, version:selectedMinecraftVersion }); await refreshManagedInstances(id); selectedInstanceId = id; await invoke("select_managed_instance", { id }); showNotice("Paquete importado y aislado correctamente.", "success"); } catch (error) { showNotice(String(error), "error"); } });
