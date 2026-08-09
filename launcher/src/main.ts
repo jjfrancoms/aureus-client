@@ -38,6 +38,7 @@ let selectedMinecraftVersion = "1.21.11";
 let selectedInstanceId = "1.21.11";
 let updateInProgress = false;
 let pendingUpdate: NonNullable<Awaited<ReturnType<typeof check>>> | null = null;
+let minecraftSession: MinecraftSession | null = null;
 
 async function installPendingUpdate() {
   if (!pendingUpdate || updateInProgress) return;
@@ -249,7 +250,7 @@ async function refresh() {
       invoke<Status>("launcher_status"), invoke<SelectedVersionStatus>("selected_version_status")
     ]);
     applyStatus(status);
-    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = !selected.prepared);
+    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = false);
     const selectedCopy = selected.mode === "fabric" ? `Fabric · ${selected.modCount} mods` : selected.mode === "vanilla" ? "Vanilla preparado" : "Pendiente de preparar";
     el("#version-compatibility").textContent = selectedCopy;
     el("#instance-mode").textContent = selectedCopy;
@@ -277,7 +278,29 @@ async function installMod() {
   }
 }
 
-function requestMinecraftLaunch() {
+async function requestMinecraftLaunch() {
+  try {
+    minecraftSession = await invoke<MinecraftSession | null>("current_minecraft_session");
+  } catch {
+    minecraftSession = null;
+  }
+  if (!minecraftSession) {
+    showToast("Inicia sesión con Microsoft para poder jugar.", "error");
+    switchView("account");
+    return;
+  }
+  const runtime = await invoke<RuntimeStatus>("runtime_status");
+  if (runtime.running) {
+    showToast("Minecraft ya está ejecutándose.", "error");
+    return;
+  }
+  const selected = await invoke<SelectedVersionStatus>("selected_version_status");
+  if (!selected.prepared) {
+    showToast(`Preparando Minecraft ${selected.version} por primera vez…`, "success");
+    await installMod();
+    const prepared = await invoke<SelectedVersionStatus>("selected_version_status");
+    if (!prepared.prepared) return;
+  }
   const dialog = el<HTMLDialogElement>("#launch-confirmation");
   el("#confirm-version").textContent = selectedMinecraftVersion;
   el("#confirm-instance").textContent = activeInstance?.name ?? selectedInstanceId;
@@ -340,13 +363,8 @@ async function killMinecraft() {
 async function refreshRuntime() {
   try {
     const runtime = await invoke<RuntimeStatus>("runtime_status");
-    el("#runtime-card").hidden = !runtime.running;
     el<HTMLButtonElement>("#kill-game").hidden = !runtime.running;
     all<HTMLButtonElement>(".play-action").forEach(button => button.hidden = runtime.running);
-    if (!runtime.running) return;
-    el("#runtime-pid").textContent = String(runtime.pid ?? "—");
-    const elapsed = Math.max(0, Math.floor(Date.now() / 1000) - (runtime.startedAt ?? Math.floor(Date.now() / 1000)));
-    el("#runtime-time").textContent = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
   } catch (error) {
     console.warn("No se pudo consultar la instancia", error);
   }
@@ -378,7 +396,7 @@ async function loadVersionCatalog() {
     selectedInstanceId = selector.value;
     all(".selected-version-label").forEach(label => label.textContent = selector.value);
     const initialStatus = await invoke<SelectedVersionStatus>("selected_version_status");
-    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = !initialStatus.prepared);
+    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = false);
     el("#version-compatibility").textContent = initialStatus.mode === "aureus" ? "Aureus completo" : initialStatus.mode === "fabric" ? `Fabric · ${initialStatus.modCount} mods` : initialStatus.mode === "vanilla" ? "Vanilla preparado" : "Pendiente de preparar";
     el("#instance-mode").textContent = el("#version-compatibility").textContent ?? "Pendiente";
   } catch (error) {
@@ -393,7 +411,7 @@ async function loadVersionCatalog() {
     const status = await invoke<SelectedVersionStatus>("selected_version_status");
     el("#version-compatibility").textContent = status.mode === "aureus" ? "Aureus completo" : status.mode === "fabric" ? `Fabric · ${status.modCount} mods` : status.mode === "vanilla" ? "Vanilla preparado" : "Pendiente de preparar y resolver mods";
     el("#instance-mode").textContent = el("#version-compatibility").textContent ?? "Pendiente";
-    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = !status.prepared);
+    all<HTMLButtonElement>(".play-action").forEach(button => button.disabled = false);
     showNotice(`Versión ${version} seleccionada. Prepara la instancia antes de jugar.`);
   });
 }
@@ -459,6 +477,7 @@ async function refreshManagedInstances(preferred?: string) {
 }
 
 function applyMinecraftSession(session: MinecraftSession) {
+  minecraftSession = session;
   all<HTMLButtonElement>(".login-action").forEach(button => button.textContent = session.username);
   el(".account strong").textContent = session.username;
   el(".account small").textContent = "Minecraft Java";
@@ -587,7 +606,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   el("#duplicate-instance").addEventListener("click", async () => { const name = window.prompt("Nombre de la copia", `Copia de ${selectedInstanceId}`)?.trim(); if (!name) return; const id = `${selectedMinecraftVersion}-${Date.now()}`; try { await invoke("duplicate_managed_instance", { sourceId:selectedInstanceId, newId:id, newName:name }); await refreshManagedInstances(id); selectedInstanceId = id; await invoke("select_managed_instance", { id }); showNotice("Instancia duplicada y seleccionada.", "success"); } catch (error) { showNotice(String(error), "error"); } });
   el("#import-instance").addEventListener("click", async () => { const archivePath = window.prompt("Ruta del archivo .aureuspack")?.trim(); if (!archivePath) return; const id = `${selectedMinecraftVersion}-import-${Date.now()}`; try { await invoke("import_instance", { archivePath, newId:id, version:selectedMinecraftVersion }); await refreshManagedInstances(id); selectedInstanceId = id; await invoke("select_managed_instance", { id }); showNotice("Paquete importado y aislado correctamente.", "success"); } catch (error) { showNotice(String(error), "error"); } });
   el("#delete-instance").addEventListener("click", async () => { if (!selectedInstanceId || !window.confirm(`¿Eliminar ${selectedInstanceId} y sus archivos?`)) return; try { await invoke("delete_managed_instance", { id:selectedInstanceId, deleteFiles:true }); await invoke("select_version", { version:selectedMinecraftVersion }); selectedInstanceId = selectedMinecraftVersion; await refreshManagedInstances(); showNotice("Instancia eliminada.", "success"); } catch (error) { showNotice(String(error), "error"); } });
-  el("#logout-account").addEventListener("click", async () => { try { showNotice(await invoke<string>("logout_minecraft_account"), "success"); await refreshAccounts(); } catch (error) { showNotice(String(error), "error"); } });
+  el("#logout-account").addEventListener("click", async () => { try { showNotice(await invoke<string>("logout_minecraft_account"), "success"); minecraftSession = null; el(".account strong").textContent = "Sin sesión"; el(".account small").textContent = "Cuenta Microsoft"; el(".avatar").textContent = "?"; await refreshAccounts(); } catch (error) { showNotice(String(error), "error"); } });
   await refreshAccounts();
   await listen<LaunchProgress>("launch-progress", event => {
     const progress = event.payload;
@@ -632,7 +651,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   el("#cancel-launch").addEventListener("click", cancelLaunch);
   el("#kill-game").addEventListener("click", killMinecraft);
-  el("#runtime-kill").addEventListener("click", killMinecraft);
   await refreshRuntime();
   await loadVersionCatalog();
   await refreshManagedInstances();

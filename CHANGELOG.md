@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6
+
+- Simplifica Inicio a una única acción PLAY que prepara Minecraft automáticamente.
+- Bloquea el inicio sin una cuenta Microsoft válida y dirige a Cuenta mediante una notificación.
+- Elimina de Inicio la tarjeta con PID y cronómetro y evita reconstruir procesos ajenos al abrir Aureus.
+
 ## 0.3.5
 
 - Publica una actualización únicamente cuando macOS y Windows estén completos.
