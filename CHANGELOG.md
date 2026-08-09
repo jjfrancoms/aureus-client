@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+- Evita que PowerShell aparezca al iniciar Aureus en Windows.
+- Ejecuta la detección de procesos y memoria en segundo plano.
+
 ## 0.3.2
 
 - Añade Debugify y FPSFlow al stack estable de Fabric 1.21.11.

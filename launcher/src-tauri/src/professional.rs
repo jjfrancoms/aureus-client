@@ -6,6 +6,8 @@ use std::{
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -516,9 +518,14 @@ fn detect_memory_mb() -> u64 {
     }
     #[cfg(target_os = "windows")]
     {
-        if let Ok(out) = std::process::Command::new("powershell")
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let mut command = std::process::Command::new("powershell");
+        command.creation_flags(CREATE_NO_WINDOW);
+        if let Ok(out) = command
             .args([
+                "-NoLogo",
                 "-NoProfile",
+                "-NonInteractive",
                 "-Command",
                 "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory",
             ])
