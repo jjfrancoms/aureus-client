@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.9
+
+- Corrige el inicio cruzado entre Windows y macOS: los argumentos exclusivos de macOS ya no se aplican en Windows.
+- Oculta la consola auxiliar al ejecutar Minecraft y Fabric en Windows.
+- Usa el runtime Java administrado por Aureus en preparación, estado y diagnósticos.
+- Corrige el reemplazo de archivos descargados y configuraciones existentes en Windows.
+- Usa `%APPDATA%` para localizar Minecraft de forma fiable en Windows.
+- Sincroniza la configuración HUD actual y oculta la lista técnica de compatibilidad.
+- Mejora los diagnósticos para leer el registro de la instancia seleccionada.
+- Integra y activa The Better Default Pack por defecto en Minecraft 1.21.11, tanto en Windows como en macOS.
+- Añade Simple Voice Chat para Fabric, con resolución automática de la versión compatible en cada instancia.
+
 ## 0.3.8
 
 - Rediseña el panel de módulos dentro de Minecraft con tarjetas modernas, filtros y estados interactivos.

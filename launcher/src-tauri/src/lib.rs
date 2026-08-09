@@ -7,10 +7,10 @@ use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::path::{Path, PathBuf};
-use std::process::Stdio;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -21,12 +21,14 @@ pub mod version_manager;
 const CLIENT_ID: &str = "4e82ebb8-bdf1-48f8-a1c2-8a62cd1be7a8";
 const MINECRAFT_VERSION: &str = "1.21.11";
 const MOD_FILE_NAME: &str = "aureus-client-minecraft-1.21.11.jar";
-const MOD_BYTES: &[u8] =
-    include_bytes!("../../../outputs/aureus-client-minecraft-1.21.11.jar");
+const MOD_BYTES: &[u8] = include_bytes!("../../../outputs/aureus-client-minecraft-1.21.11.jar");
 const FABRIC_API_FILE_NAME: &str = "fabric-api-0.141.6+1.21.11.jar";
 const FABRIC_API_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-api-0.141.6+1.21.11.jar");
 const FABRIC_INSTALLER_BYTES: &[u8] = include_bytes!("../../../outputs/fabric-installer-1.1.2.jar");
 const FABRIC_PROFILE: &str = "fabric-loader-0.19.3-1.21.11";
+const DEFAULT_RESOURCE_PACK_NAME: &str = "better-default-1.21.11.zip";
+const DEFAULT_RESOURCE_PACK_BYTES: &[u8] =
+    include_bytes!("../resources/better-default-1.21.11.zip");
 
 #[cfg(target_os = "windows")]
 fn hidden_windows_command(program: &str) -> std::process::Command {
@@ -88,6 +90,7 @@ const PERFORMANCE_MODS: &[(&str, &str)] = &[
     ("bettermounthud-1.2.6.jar", "https://cdn.modrinth.com/data/kqJFAPU9/versions/rXZxHSEZ/bettermounthud-1.2.6.jar"),
     ("ItemCounter-1.0.1+1.21.8.jar", "https://cdn.modrinth.com/data/z2ktbVdj/versions/BvFvJJjV/ItemCounter-1.0.1%2B1.21.8.jar"),
     ("settingsmanager-1.1.3+1.21.11.jar", "https://cdn.modrinth.com/data/1dU3bHt8/versions/hjWxcBAQ/settingsmanager-1.1.3%2B1.21.11.jar"),
+    ("voicechat-fabric-1.21.11-2.6.9.jar", "https://cdn.modrinth.com/data/9eGKb6K1/versions/YECcGHNV/voicechat-fabric-1.21.11-2.6.9.jar"),
 ];
 
 #[derive(Serialize)]
@@ -400,7 +403,7 @@ struct UpdateStatus {
 #[tauri::command]
 async fn check_launcher_update() -> Result<UpdateStatus, String> {
     let response: serde_json::Value = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| e.to_string())?
         .get("https://api.github.com/repos/jjfrancoms/aureus-client/releases/latest")
@@ -494,7 +497,7 @@ fn read_selected_instance() -> String {
 #[tauri::command]
 async fn version_catalog() -> Result<Vec<MinecraftVersionEntry>, String> {
     let manifest: MojangManifest = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|error| error.to_string())?
         .get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")
@@ -609,7 +612,7 @@ async fn install_selected_version(
     let minecraft =
         minecraft_directory().ok_or("No se pudo localizar la carpeta compartida de Minecraft")?;
     let client = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|error| error.to_string())?;
     emit_launch(
@@ -703,16 +706,7 @@ async fn install_selected_version(
                 fs::write(instance_dir.join("mods").join(MOD_FILE_NAME), MOD_BYTES)
                     .map_err(|error| error.to_string())?;
                 mod_count += 1;
-                let source_pack = minecraft
-                    .join("resourcepacks")
-                    .join("The Better Default Pack");
-                let destination_pack = instance_dir
-                    .join("resourcepacks")
-                    .join("The Better Default Pack");
-                if source_pack.exists() {
-                    copy_directory(&source_pack, &destination_pack)?;
-                    fs::write(instance_dir.join("options.txt"), b"resourcePacks:[\"file/The Better Default Pack\"]\nrenderDistance:8\nsimulationDistance:12\n").map_err(|error| error.to_string())?;
-                }
+                ensure_default_resource_pack(&instance_dir)?;
             }
         }
     }
@@ -746,24 +740,6 @@ async fn install_selected_version(
     } else {
         format!("Minecraft {version} preparado en modo Vanilla; Fabric no está disponible")
     })
-}
-
-fn copy_directory(source: &Path, destination: &Path) -> Result<(), String> {
-    fs::create_dir_all(destination).map_err(|error| error.to_string())?;
-    for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let target = destination.join(entry.file_name());
-        if entry
-            .file_type()
-            .map_err(|error| error.to_string())?
-            .is_dir()
-        {
-            copy_directory(&entry.path(), &target)?;
-        } else {
-            fs::copy(entry.path(), target).map_err(|error| error.to_string())?;
-        }
-    }
-    Ok(())
 }
 
 fn default_instance() -> Result<GameInstance, String> {
@@ -802,7 +778,15 @@ fn write_instances(instances: &[GameInstance]) -> Result<(), String> {
     let temporary = path.with_extension("json.tmp");
     let bytes = serde_json::to_vec_pretty(instances).map_err(|error| error.to_string())?;
     fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
-    fs::rename(temporary, path).map_err(|error| error.to_string())
+    replace_file(&temporary, &path)
+}
+
+fn replace_file(source: &Path, destination: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    if destination.exists() {
+        fs::remove_file(destination).map_err(|error| error.to_string())?;
+    }
+    fs::rename(source, destination).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -834,7 +818,9 @@ fn save_instance(instance: GameInstance) -> Result<GameInstance, String> {
 #[tauri::command]
 fn collect_diagnostics() -> Result<DiagnosticsReport, String> {
     let minecraft = minecraft_directory().ok_or("No se pudo localizar Minecraft")?;
-    let java_version = std::process::Command::new("java")
+    let managed_java = version_manager::find_java(&aureus_data_directory()?.join("runtimes"));
+    let java_program = managed_java.unwrap_or_else(|| PathBuf::from("java"));
+    let java_version = std::process::Command::new(java_program)
         .arg("-version")
         .output()
         .map(|output| {
@@ -845,7 +831,14 @@ fn collect_diagnostics() -> Result<DiagnosticsReport, String> {
                 .to_string()
         })
         .unwrap_or_else(|_| "Java no detectado".into());
-    let latest_log = minecraft.join("logs").join("latest.log");
+    let managed_log = aureus_data_directory()?
+        .join("logs")
+        .join(format!("minecraft-{}-latest.log", read_selected_version()));
+    let latest_log = if managed_log.exists() {
+        managed_log
+    } else {
+        minecraft.join("logs").join("latest.log")
+    };
     let latest_log_tail = fs::read_to_string(latest_log)
         .ok()
         .map(|text| {
@@ -874,7 +867,12 @@ fn minecraft_directory() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     return Some(home.join("Library/Application Support/minecraft"));
     #[cfg(target_os = "windows")]
-    return Some(home.join("AppData/Roaming/.minecraft"));
+    return Some(
+        std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| home.join("AppData/Roaming"))
+            .join(".minecraft"),
+    );
     #[cfg(target_os = "linux")]
     return Some(home.join(".minecraft"));
 }
@@ -886,10 +884,16 @@ fn launcher_status() -> LauncherStatus {
         .as_ref()
         .map(|path| path.join("mods").join(MOD_FILE_NAME).exists())
         .unwrap_or(false);
-    let java_available = std::process::Command::new("java")
-        .arg("-version")
-        .output()
-        .is_ok();
+    let java_available = version_manager::find_java(
+        &aureus_data_directory()
+            .unwrap_or_else(|_| PathBuf::new())
+            .join("runtimes"),
+    )
+    .is_some()
+        || std::process::Command::new("java")
+            .arg("-version")
+            .output()
+            .is_ok();
     let fabric_installed = minecraft
         .as_ref()
         .map(|path| {
@@ -930,9 +934,23 @@ async fn prepare_minecraft() -> Result<String, String> {
     let minecraft = minecraft_directory().ok_or("No se pudo localizar la carpeta de Minecraft")?;
     fs::create_dir_all(&minecraft).map_err(|error| error.to_string())?;
 
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("Aureus-Launcher/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let java = version_manager::ensure_java_runtime(
+        21,
+        &aureus_data_directory()?.join("runtimes"),
+        &client,
+    )
+    .await?;
+
     let installer = std::env::temp_dir().join("aureus-fabric-installer-1.1.2.jar");
     fs::write(&installer, FABRIC_INSTALLER_BYTES).map_err(|error| error.to_string())?;
-    let install_result = std::process::Command::new("java")
+    let mut installer_command = std::process::Command::new(java);
+    #[cfg(target_os = "windows")]
+    installer_command.creation_flags(0x08000000);
+    let install_result = installer_command
         .arg("-jar")
         .arg(&installer)
         .arg("client")
@@ -957,10 +975,6 @@ async fn prepare_minecraft() -> Result<String, String> {
     fs::write(mods.join(FABRIC_API_FILE_NAME), FABRIC_API_BYTES)
         .map_err(|error| error.to_string())?;
     fs::write(mods.join(MOD_FILE_NAME), MOD_BYTES).map_err(|error| error.to_string())?;
-    let client = reqwest::Client::builder()
-        .user_agent("Aureus-Launcher/0.3.0")
-        .build()
-        .map_err(|error| error.to_string())?;
     for (file_name, url) in PERFORMANCE_MODS {
         let destination = mods.join(file_name);
         if destination.exists() {
@@ -980,7 +994,7 @@ async fn prepare_minecraft() -> Result<String, String> {
         let bytes = response.bytes().await.map_err(|error| error.to_string())?;
         let temporary = destination.with_extension("jar.part");
         fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
-        fs::rename(temporary, destination).map_err(|error| error.to_string())?;
+        replace_file(&temporary, &destination)?;
     }
     Ok(format!(
         "Minecraft {MINECRAFT_VERSION}, Aureus y {} optimizadores están listos",
@@ -1019,29 +1033,40 @@ fn newest_natives_directory(minecraft: &std::path::Path) -> Result<PathBuf, Stri
 }
 
 fn ensure_default_resource_pack(minecraft: &std::path::Path) -> Result<(), String> {
-    let pack = minecraft
-        .join("resourcepacks")
-        .join("The Better Default Pack");
-    if !pack.join("pack.mcmeta").exists() {
-        return Ok(());
+    let resourcepacks = minecraft.join("resourcepacks");
+    fs::create_dir_all(&resourcepacks).map_err(|error| error.to_string())?;
+    let pack = resourcepacks.join(DEFAULT_RESOURCE_PACK_NAME);
+    if !pack.exists() {
+        fs::write(&pack, DEFAULT_RESOURCE_PACK_BYTES).map_err(|error| error.to_string())?;
     }
     let options_path = minecraft.join("options.txt");
     let contents = fs::read_to_string(&options_path).unwrap_or_default();
-    let desired = "resourcePacks:[\"file/The Better Default Pack\"]";
+    let pack_id = format!("file/{DEFAULT_RESOURCE_PACK_NAME}");
     let mut found = false;
     let mut lines: Vec<String> = contents
         .lines()
         .map(|line| {
             if line.starts_with("resourcePacks:") {
                 found = true;
-                desired.to_string()
+                let mut packs: Vec<String> =
+                    serde_json::from_str(line.strip_prefix("resourcePacks:").unwrap_or("[]"))
+                        .unwrap_or_default();
+                packs.retain(|value| value != &pack_id);
+                packs.insert(0, pack_id.clone());
+                format!(
+                    "resourcePacks:{}",
+                    serde_json::to_string(&packs).unwrap_or_else(|_| "[]".into())
+                )
             } else {
                 line.to_string()
             }
         })
         .collect();
     if !found {
-        lines.push(desired.to_string());
+        lines.push(format!(
+            "resourcePacks:{}",
+            serde_json::to_string(&vec![pack_id]).map_err(|error| error.to_string())?
+        ));
     }
     fs::write(options_path, format!("{}\n", lines.join("\n"))).map_err(|error| error.to_string())
 }
@@ -1203,12 +1228,7 @@ fn launch_minecraft(
         .collect::<Vec<_>>()
         .join(separator);
     let natives = newest_natives_directory(&minecraft)?;
-    emit_launch(
-        &app,
-        62,
-        "Sistema",
-        "Componentes nativos de macOS preparados",
-    );
+    emit_launch(&app, 62, "Sistema", "Componentes nativos preparados");
     let instance = read_instances()?
         .into_iter()
         .next()
@@ -1249,9 +1269,12 @@ fn launch_minecraft(
         File::create(log_dir.join("minecraft-latest.log")).map_err(|error| error.to_string())?;
     let stderr = stdout.try_clone().map_err(|error| error.to_string())?;
     let mut command = std::process::Command::new(java);
+    command.current_dir(&minecraft);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(0x08000000);
+    #[cfg(target_os = "macos")]
+    command.arg("-XstartOnFirstThread");
     command
-        .current_dir(&minecraft)
-        .arg("-XstartOnFirstThread")
         .arg("-Xss1M")
         .arg("-Xms512M")
         .arg(format!("-Xmx{memory}M"))
@@ -1268,7 +1291,10 @@ fn launch_minecraft(
         ))
         .arg(format!("-Dio.netty.native.workdir={}", natives.display()))
         .arg("-Dminecraft.launcher.brand=aureus-launcher")
-        .arg("-Dminecraft.launcher.version=0.3.0");
+        .arg(format!(
+            "-Dminecraft.launcher.version={}",
+            env!("CARGO_PKG_VERSION")
+        ));
     if log_config.exists() {
         command.arg(format!(
             "-Dlog4j.configurationFile={}",
@@ -1280,7 +1306,6 @@ fn launch_minecraft(
     let mut child = command
         .arg("-cp")
         .arg(classpath)
-        .arg("-DFabricMcEmu= net.minecraft.client.main.Main ")
         .arg("net.fabricmc.loader.impl.launch.knot.KnotClient")
         .arg("--username")
         .arg(&session.username)
@@ -1390,7 +1415,7 @@ fn replace_launch_tokens(
         ("${clientid}", CLIENT_ID.into()),
         ("${auth_xuid}", String::new()),
         ("${launcher_name}", "Aureus".into()),
-        ("${launcher_version}", "0.3.0".into()),
+        ("${launcher_version}", env!("CARGO_PKG_VERSION").into()),
         (
             "${library_directory}",
             minecraft.join("libraries").to_string_lossy().into_owned(),
@@ -1436,6 +1461,9 @@ fn launch_selected_minecraft(
     let instance_dir = aureus_data_directory()?
         .join("instances-data")
         .join(&instance_id);
+    if version == MINECRAFT_VERSION {
+        ensure_default_resource_pack(&instance_dir)?;
+    }
     let descriptor: InstanceDescriptor = serde_json::from_slice(
         &fs::read(instance_dir.join("aureus-instance.json"))
             .map_err(|_| "Prepara esta versión antes de jugar")?,
@@ -1521,6 +1549,8 @@ fn launch_selected_minecraft(
         format!("Java {} · preparando proceso", base_meta.java_major),
     );
     let mut command = std::process::Command::new(java);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(0x08000000);
     let has_version_jvm_args = !base_meta.jvm_args.is_empty();
     let (memory_mb, width, height, custom_jvm) =
         professional::launch_preferences(&instance_id).unwrap_or((5120, 1280, 720, Vec::new()));
