@@ -497,6 +497,8 @@ pub async fn resolve_modrinth_mods(
         "betterf3",
         "appleskin",
         "fast-ip-ping",
+        "debugify",
+        "fpsflow",
     ];
     install_modrinth_projects(
         version,
