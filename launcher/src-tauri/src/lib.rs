@@ -446,25 +446,6 @@ fn ensure_not_cancelled(runtime: &RuntimeState) -> Result<(), String> {
     }
 }
 
-fn detect_minecraft_pid() -> Option<u32> {
-    #[cfg(target_os = "windows")]
-    let output = hidden_windows_command("powershell").args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_Process | Where-Object {($_.Name -eq 'java.exe' -or $_.Name -eq 'javaw.exe') -and $_.CommandLine -like '*minecraft.launcher.brand=aureus-launcher*'} | Select-Object -First 1).ProcessId"]).output().ok()?;
-    #[cfg(not(target_os = "windows"))]
-    let output = std::process::Command::new("pgrep")
-        .args(["-f", "minecraft.launcher.brand=aureus-launcher"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .next()?
-        .trim()
-        .parse()
-        .ok()
-}
-
 fn aureus_data_directory() -> Result<PathBuf, String> {
     let base = dirs::config_dir().ok_or("No se pudo localizar la carpeta de configuración")?;
     let path = base.join("Aureus Launcher");
@@ -1646,7 +1627,6 @@ fn kill_minecraft(runtime: State<'_, RuntimeState>) -> Result<String, String> {
         .game_pid
         .lock()
         .map_err(|_| "Estado del proceso bloqueado")?
-        .or_else(detect_minecraft_pid)
         .ok_or("No hay una instancia de Minecraft ejecutándose")?;
     #[cfg(target_os = "windows")]
     let status = std::process::Command::new("taskkill")
@@ -1665,13 +1645,10 @@ fn kill_minecraft(runtime: State<'_, RuntimeState>) -> Result<String, String> {
 
 #[tauri::command]
 fn runtime_status(runtime: State<'_, RuntimeState>) -> Result<RuntimeStatus, String> {
-    let mut stored_pid = runtime
+    let stored_pid = runtime
         .game_pid
         .lock()
         .map_err(|_| "Estado del proceso bloqueado")?;
-    if stored_pid.is_none() {
-        *stored_pid = detect_minecraft_pid();
-    }
     let pid = *stored_pid;
     let started_at = *runtime
         .started_at
