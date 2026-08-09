@@ -28,34 +28,34 @@ public final class PerformanceHud {
     public static void render(GuiGraphics graphics, DeltaTracker ignored) {
         Minecraft client = Minecraft.getInstance();
         ClientConfig config = ClientConfig.get();
-        if (client.options.hideGui || client.screen != null) {
+        if (client.options.hideGui || client.screen != null || config.captureMode) {
             return;
         }
 
         int y = config.hudY;
         int fps = Math.max(client.getFps(), 1);
         if (config.showFps) {
-            draw(graphics, client, "FPS  " + fps, config.hudX, y, fps >= 60 ? ACCENT : WARNING);
+            drawModule(graphics, client, "fps", "FPS  " + fps, config.hudX, y, fps >= 60 ? ACCENT : WARNING);
             y += 11;
         }
         if (config.showFrameTime) {
-            draw(graphics, client, "Frame  %.1f ms".formatted(1_000.0 / fps), config.hudX, y, TEXT);
+            drawModule(graphics, client, "frame_time", "Frame  %.1f ms".formatted(1_000.0 / fps), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showSessionMetrics && FrameMetrics.averageFps() > 0) {
-            draw(graphics, client, "Prom. " + FrameMetrics.averageFps()
+            drawModule(graphics, client, "session", "Prom. " + FrameMetrics.averageFps()
                     + " | 1% low " + FrameMetrics.onePercentLow(), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showCps) {
-            draw(graphics, client, "CPS  " + CombatMetrics.leftCps(), config.hudX, y, TEXT);
+            drawModule(graphics, client, "cps", "CPS  " + CombatMetrics.leftCps(), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showPing && client.player != null && client.getConnection() != null) {
             PlayerInfo info = client.getConnection().getPlayerInfo(client.player.getUUID());
             if (info != null) {
                 int latency = info.getLatency();
-                draw(graphics, client, "Ping  " + latency + " ms", config.hudX, y, latency < 100 ? ACCENT : WARNING);
+                drawModule(graphics, client, "ping", "Ping  " + latency + " ms", config.hudX, y, latency < 100 ? ACCENT : WARNING);
                 y += 11;
             }
         }
@@ -63,33 +63,38 @@ public final class PerformanceHud {
             Runtime runtime = Runtime.getRuntime();
             long used = (runtime.totalMemory() - runtime.freeMemory()) / 1_048_576L;
             long max = runtime.maxMemory() / 1_048_576L;
-            draw(graphics, client, "RAM  " + used + "/" + max + " MB", config.hudX, y, TEXT);
+            drawModule(graphics, client, "memory", "RAM  " + used + "/" + max + " MB", config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showCoordinates && client.player != null) {
-            draw(graphics, client, "XYZ  %.1f  %.1f  %.1f".formatted(
+            drawModule(graphics, client, "coordinates", "XYZ  %.1f  %.1f  %.1f".formatted(
                     client.player.getX(), client.player.getY(), client.player.getZ()), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showDirection && client.player != null) {
-            draw(graphics, client, "Dirección  " + client.player.getDirection().getName().toUpperCase(), config.hudX, y, TEXT);
+            drawModule(graphics, client, "direction", "Dirección  " + client.player.getDirection().getName().toUpperCase(), config.hudX, y, TEXT);
             y += 11;
         }
         if (config.showBiome && client.player != null && client.level != null) {
             String biome = client.level.getBiome(client.player.blockPosition()).unwrapKey()
                     .map(key -> key.identifier().getPath().replace('_', ' ')).orElse("desconocido");
-            draw(graphics, client, "Bioma  " + biome, config.hudX, y, TEXT);
+            drawModule(graphics, client, "biome", "Bioma  " + biome, config.hudX, y, TEXT);
         }
 
         if (config.showKeystrokes) {
             int center = graphics.guiWidth() * config.keysXPercent / 100;
             int keysY = config.keysY;
-            drawKey(graphics, client, "W", center - 6, keysY, client.options.keyUp.isDown());
-            drawKey(graphics, client, "A", center - 18, keysY + 12, client.options.keyLeft.isDown());
-            drawKey(graphics, client, "S", center - 6, keysY + 12, client.options.keyDown.isDown());
-            drawKey(graphics, client, "D", center + 6, keysY + 12, client.options.keyRight.isDown());
-            drawKey(graphics, client, "LMB", center - 31, keysY + 25, client.options.keyAttack.isDown());
-            drawKey(graphics, client, "RMB", center + 7, keysY + 25, client.options.keyUse.isDown());
+            ClientConfig.HudElementStyle style = config.hudStyle("keystrokes");
+            int baseX = style.x >= 0 ? style.x : center - 31;
+            int baseY = style.y >= 0 ? style.y : keysY;
+            pushScale(graphics, baseX, baseY, combinedScale(config, style));
+            drawKey(graphics, client, "W", baseX + 25, baseY, client.options.keyUp.isDown(), style);
+            drawKey(graphics, client, "A", baseX + 13, baseY + 12, client.options.keyLeft.isDown(), style);
+            drawKey(graphics, client, "S", baseX + 25, baseY + 12, client.options.keyDown.isDown(), style);
+            drawKey(graphics, client, "D", baseX + 37, baseY + 12, client.options.keyRight.isDown(), style);
+            drawKey(graphics, client, "LMB", baseX, baseY + 25, client.options.keyAttack.isDown(), style);
+            drawKey(graphics, client, "RMB", baseX + 38, baseY + 25, client.options.keyUse.isDown(), style);
+            graphics.pose().popMatrix();
         }
 
         if (client.player != null) {
@@ -107,15 +112,23 @@ public final class PerformanceHud {
     }
 
     private static void renderCombatInfo(GuiGraphics graphics, Minecraft client, ClientConfig config) {
-        int x = graphicsWidth(client) - 150;
-        int y = 6;
+        int x = config.combatX < 0 ? graphicsWidth(client) + config.combatX : config.combatX;
+        int y = config.combatY;
         if (config.showAttackCooldown) {
+            ClientConfig.HudElementStyle style = config.hudStyle("attack");
+            int moduleX = style.x >= 0 ? style.x : x; int moduleY = style.y >= 0 ? style.y : y;
+            pushScale(graphics, moduleX, moduleY, combinedScale(config, style));
             int percent = Math.round(client.player.getAttackStrengthScale(0.0F) * 100.0F);
-            graphics.fill(x - 4, y - 3, x + 92, y + 10, 0x65000000);
-            draw(graphics, client, "Ataque  " + percent + "%", x, y, percent == 100 ? ACCENT : TEXT);
+            graphics.fill(moduleX - 4, moduleY - 3, moduleX + 92, moduleY + 10, 0x65000000);
+            drawStyled(graphics, client, "Ataque  " + percent + "%", moduleX, moduleY, percent == 100 ? ACCENT : TEXT, style);
+            graphics.pose().popMatrix();
             y += 17;
         }
         if (config.showArmor) {
+            ClientConfig.HudElementStyle style = config.hudStyle("armor");
+            int moduleX = style.x >= 0 ? style.x : x; int moduleY = style.y >= 0 ? style.y : y;
+            pushScale(graphics, moduleX, moduleY, combinedScale(config, style));
+            int rowY = moduleY;
             for (EquipmentSlot slot : new EquipmentSlot[]{
                     EquipmentSlot.MAINHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
                     EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
@@ -124,23 +137,29 @@ public final class PerformanceHud {
                     int remaining = stack.getMaxDamage() - stack.getDamageValue();
                     float ratio = remaining / (float) stack.getMaxDamage();
                     int color = ratio <= 0.2F ? 0xFFFF6666 : ratio <= 0.45F ? 0xFFFFD166 : 0xFF72E69A;
-                    graphics.fill(x - 4, y - 2, x + 112, y + 18, 0x72000000);
-                    graphics.renderItem(stack, x, y);
-                    draw(graphics, client, remaining + " / " + stack.getMaxDamage(), x + 20, y + 2, color);
-                    graphics.fill(x + 20, y + 13, x + 102, y + 15, 0xFF353A36);
-                    graphics.fill(x + 20, y + 13, x + 20 + Math.round(82 * ratio), y + 15, color);
-                    y += 21;
+                    graphics.fill(moduleX - 4, rowY - 2, moduleX + 112, rowY + 18, 0x72000000);
+                    graphics.renderItem(stack, moduleX, rowY);
+                    drawStyled(graphics, client, remaining + " / " + stack.getMaxDamage(), moduleX + 20, rowY + 2, color, style);
+                    graphics.fill(moduleX + 20, rowY + 13, moduleX + 102, rowY + 15, 0xFF353A36);
+                    graphics.fill(moduleX + 20, rowY + 13, moduleX + 20 + Math.round(82 * ratio), rowY + 15, color);
+                    rowY += 21; y += 21;
                 }
             }
+            graphics.pose().popMatrix();
         }
         if (config.showEffects) {
+            ClientConfig.HudElementStyle style = config.hudStyle("effects");
+            int moduleX = style.x >= 0 ? style.x : x; int moduleY = style.y >= 0 ? style.y : y;
+            pushScale(graphics, moduleX, moduleY, combinedScale(config, style));
+            int rowY = moduleY;
             for (MobEffectInstance effect : client.player.getActiveEffects()) {
                 String name = effect.getEffect().value().getDisplayName().getString();
                 int seconds = effect.getDuration() / 20;
-                graphics.fill(x - 4, y - 3, x + 112, y + 10, 0x65000000);
-                draw(graphics, client, name + "  " + seconds + "s", x, y, TEXT);
-                y += 15;
+                graphics.fill(moduleX - 4, rowY - 3, moduleX + 112, rowY + 10, 0x65000000);
+                drawStyled(graphics, client, name + "  " + seconds + "s", moduleX, rowY, TEXT, style);
+                rowY += 15;
             }
+            graphics.pose().popMatrix();
         }
     }
 
@@ -152,8 +171,12 @@ public final class PerformanceHud {
         };
         int visible = 0;
         for (Item item : tracked) if (countItem(client, item) > 0) visible++;
-        int x = graphics.guiWidth() - 27;
-        int y = Math.max(42, graphics.guiHeight() / 2 - visible * 10);
+        ClientConfig config = ClientConfig.get();
+        int x = config.itemsX < 0 ? graphics.guiWidth() + config.itemsX : config.itemsX;
+        int y = Math.max(20, graphics.guiHeight() * config.itemsYPercent / 100 - visible * 10);
+        ClientConfig.HudElementStyle style = config.hudStyle("items");
+        x = style.x >= 0 ? style.x : x; y = style.y >= 0 ? style.y : y;
+        pushScale(graphics, x, y, combinedScale(config, style));
         for (Item item : tracked) {
             int count = countItem(client, item);
             if (count <= 0) continue;
@@ -163,6 +186,7 @@ public final class PerformanceHud {
             graphics.renderItemDecorations(client.font, icon, x, y, Integer.toString(count));
             y += 21;
         }
+        graphics.pose().popMatrix();
     }
 
     private static int countItem(Minecraft client, Item item) {
@@ -179,10 +203,40 @@ public final class PerformanceHud {
     }
 
     private static void draw(GuiGraphics graphics, Minecraft client, String text, int x, int y, int color) {
-        graphics.drawString(client.font, text, x, y, color, true);
+        int alpha = Math.clamp(Math.round(255 * ClientConfig.get().hudOpacity / 100.0F), 32, 255);
+        graphics.drawString(client.font, text, x, y, (color & 0x00FFFFFF) | (alpha << 24), true);
     }
 
-    private static void drawKey(GuiGraphics graphics, Minecraft client, String key, int x, int y, boolean down) {
-        draw(graphics, client, key, x, y, down ? ACCENT : INACTIVE);
+    private static void drawKey(GuiGraphics graphics, Minecraft client, String key, int x, int y, boolean down,
+                                ClientConfig.HudElementStyle style) {
+        drawStyled(graphics, client, key, x, y, down ? ACCENT : INACTIVE, style);
+    }
+
+    private static void drawModule(GuiGraphics graphics, Minecraft client, String id, String text,
+                                   int defaultX, int defaultY, int color) {
+        ClientConfig config = ClientConfig.get(); ClientConfig.HudElementStyle style = config.hudStyle(id);
+        int x = style.x >= 0 ? style.x : defaultX; int y = style.y >= 0 ? style.y : defaultY;
+        pushScale(graphics, x, y, combinedScale(config, style));
+        drawStyled(graphics, client, text, x, y, color, style);
+        graphics.pose().popMatrix();
+    }
+
+    private static void drawStyled(GuiGraphics graphics, Minecraft client, String text, int x, int y, int color,
+                                   ClientConfig.HudElementStyle style) {
+        int opacity = ClientConfig.get().hudOpacity * style.opacity / 100;
+        int alpha = Math.clamp(Math.round(255 * opacity / 100.0F), 32, 255);
+        graphics.drawString(client.font, text, x, y, (color & 0x00FFFFFF) | (alpha << 24), true);
+    }
+
+    private static int combinedScale(ClientConfig config, ClientConfig.HudElementStyle style) {
+        return Math.clamp(config.hudScalePercent * style.scalePercent / 100, 50, 225);
+    }
+
+    private static void pushScale(GuiGraphics graphics, int anchorX, int anchorY, int percent) {
+        float scale = Math.clamp(percent, 50, 150) / 100.0F;
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(anchorX, anchorY);
+        graphics.pose().scale(scale, scale);
+        graphics.pose().translate(-anchorX, -anchorY);
     }
 }

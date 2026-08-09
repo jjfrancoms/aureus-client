@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 
 /** Applies conservative vanilla settings with stable, measurable GPU/CPU impact. */
 public final class VanillaOptimizer {
+    private static Boolean lastWindowActive;
     private VanillaOptimizer() {
     }
 
@@ -21,6 +22,16 @@ public final class VanillaOptimizer {
         client.options.mipmapLevels().set(config.mipmapLevels);
         client.options.entityShadows().set(config.entityShadows);
         client.options.bobView().set(config.viewBobbing);
+        client.options.framerateLimit().set(config.targetFps);
         client.options.save();
+    }
+
+    public static void applyAdaptiveFps(Minecraft client) {
+        ClientConfig config = ClientConfig.get();
+        boolean active = client.isWindowActive();
+        if (lastWindowActive != null && lastWindowActive == active) return;
+        lastWindowActive = active;
+        int limit = !active && config.reduceBackgroundFps ? config.backgroundFps : config.targetFps;
+        client.options.framerateLimit().set(limit);
     }
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- Nueva interfaz monocromática glass para el launcher y los módulos dentro del juego.
+- Editor HUD individual con arrastre, escala y opacidad por elemento.
+- Perfiles completos de rendimiento y HUD por servidor, modo captura y búsqueda de módulos.
+- Descargas reanudables con velocidad, tamaño, hashes y actualización transaccional.
+- Historial de respaldos, restauración segura, rollback de cierres y perfiles portátiles.
+- Gestor de mods por versión con dependencias, manifiesto propio y preservación de contenido manual.
+- Recomendaciones por RAM, CPU, GPU y batería; telemetría y benchmark A/B.
+- Verificación de integridad, limpieza segura, política de firma y CI para Windows/macOS.
+
 ## 0.3.9
 
 - Corrige el inicio cruzado entre Windows y macOS: los argumentos exclusivos de macOS ya no se aplican en Windows.

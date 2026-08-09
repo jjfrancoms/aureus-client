@@ -1,0 +1,49 @@
+name: Verify Aureus
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify Minecraft client
+        run: ./gradlew build
+        if: runner.os != 'Windows'
+      - name: Verify Minecraft client (Windows)
+        run: .\gradlew.bat build
+        if: runner.os == 'Windows'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install launcher dependencies
+        run: npm ci
+        working-directory: launcher
+      - name: Verify launcher frontend
+        run: npm run build
+        working-directory: launcher
+      - name: Verify native core
+        run: cargo test --lib
+        working-directory: launcher/src-tauri
+      - name: Verify unsigned desktop package
+        run: npm run tauri:build:local
+        working-directory: launcher

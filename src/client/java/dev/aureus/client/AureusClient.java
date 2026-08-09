@@ -31,6 +31,9 @@ public final class AureusClient implements ClientModInitializer {
         KeyMapping openMenu = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.aureus_client.open_menu", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, category
         ));
+        KeyMapping captureMode = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.aureus_client.capture_mode", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F8, category
+        ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (!initialProfileApplied && client.options != null) {
                 VanillaOptimizer.apply(client);
@@ -44,12 +47,23 @@ public final class AureusClient implements ClientModInitializer {
                     try { OptimizationProfile.valueOf(profile).apply(ClientConfig.get()); VanillaOptimizer.apply(client); ClientConfig.save(); }
                     catch (IllegalArgumentException ignored) { }
                 }
+                ClientConfig.get().applyHudLayout(ClientConfig.get().serverHudProfiles.get(server));
+                ClientConfig.save();
             }
             CombatMetrics.onEndTick(client);
             FrameMetrics.onEndTick(client);
+            VanillaOptimizer.applyAdaptiveFps(client);
             ParticleBudget.reset();
             while (openMenu.consumeClick()) {
                 client.setScreen(new ConfigScreen(client.screen));
+            }
+            while (captureMode.consumeClick()) {
+                ClientConfig.get().captureMode = !ClientConfig.get().captureMode;
+                ClientConfig.save();
+                if (client.player != null) {
+                    client.player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            ClientConfig.get().captureMode ? "Aureus: HUD oculto" : "Aureus: HUD visible"), true);
+                }
             }
         });
         HudElementRegistry.addLast(
