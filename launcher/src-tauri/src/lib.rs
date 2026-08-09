@@ -448,7 +448,7 @@ fn ensure_not_cancelled(runtime: &RuntimeState) -> Result<(), String> {
 
 fn detect_minecraft_pid() -> Option<u32> {
     #[cfg(target_os = "windows")]
-    let output = hidden_windows_command("powershell").args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -like '*aureus-launcher*'} | Select-Object -First 1).ProcessId"]).output().ok()?;
+    let output = hidden_windows_command("powershell").args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_Process | Where-Object {($_.Name -eq 'java.exe' -or $_.Name -eq 'javaw.exe') -and $_.CommandLine -like '*minecraft.launcher.brand=aureus-launcher*'} | Select-Object -First 1).ProcessId"]).output().ok()?;
     #[cfg(not(target_os = "windows"))]
     let output = std::process::Command::new("pgrep")
         .args(["-f", "minecraft.launcher.brand=aureus-launcher"])

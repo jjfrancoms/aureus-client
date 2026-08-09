@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Corrige la falsa detección de Minecraft ejecutándose en Windows.
+- Limpia automáticamente el panel después de cancelar un inicio.
+- Añade estado y progreso de actualizaciones en la esquina superior derecha.
+
 ## 0.3.3
 
 - Evita que PowerShell aparezca al iniciar Aureus en Windows.

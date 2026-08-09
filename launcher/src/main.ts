@@ -48,6 +48,10 @@ async function installPendingUpdate() {
   const button = el<HTMLButtonElement>("#check-update-now");
   updateInProgress = true;
   button.disabled = true;
+  const globalButton = el<HTMLButtonElement>("#global-update");
+  const globalLabel = el<HTMLElement>("#global-update-label");
+  globalButton.hidden = false;
+  globalButton.disabled = true;
   title.textContent = `Instalando Aureus ${pendingUpdate.version}`;
   status.textContent = "Descargando y verificando la firma…";
   progress.hidden = false;
@@ -61,6 +65,7 @@ async function installPendingUpdate() {
       const percent = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0;
       bar.style.width = `${percent}%`;
       status.textContent = total > 0 ? `Descargando y verificando… ${percent}%` : "Instalando actualización verificada…";
+      globalLabel.textContent = total > 0 ? `Descargando ${percent}%` : "Instalando…";
     });
     title.textContent = "Actualización instalada";
     status.textContent = "Reiniciando Aureus…";
@@ -71,10 +76,12 @@ async function installPendingUpdate() {
     title.textContent = "No se pudo actualizar";
     status.textContent = String(error);
     progress.hidden = true;
+    globalLabel.textContent = "Reintentar descarga";
     showNotice(`Actualización no completada: ${String(error)}`, "error");
   } finally {
     updateInProgress = false;
     button.disabled = false;
+    globalButton.disabled = false;
   }
 }
 
@@ -83,9 +90,14 @@ async function checkForAureusUpdate(manual = false) {
   const title = el<HTMLElement>("#updater-title");
   const status = el<HTMLElement>("#updater-status");
   const button = el<HTMLButtonElement>("#check-update-now");
+  const globalButton = el<HTMLButtonElement>("#global-update");
+  const globalLabel = el<HTMLElement>("#global-update-label");
   updateInProgress = true;
   button.disabled = true;
   button.textContent = "Buscando…";
+  globalButton.hidden = false;
+  globalButton.disabled = true;
+  globalLabel.textContent = "Buscando actualización…";
   title.textContent = "Buscando actualización…";
   status.textContent = "Consultando el canal estable de Aureus.";
   try {
@@ -94,17 +106,24 @@ async function checkForAureusUpdate(manual = false) {
       title.textContent = "Aureus está actualizado";
       status.textContent = "Tienes la versión estable más reciente.";
       button.textContent = "Buscar ahora";
+      globalButton.hidden = true;
       if (manual) showNotice("No hay actualizaciones disponibles.", "success");
       return;
     }
     title.textContent = `Aureus ${pendingUpdate.version} está disponible`;
     status.textContent = pendingUpdate.body || "Incluye mejoras y correcciones nuevas.";
     button.textContent = "Descargar actualización";
+    globalButton.hidden = false;
+    globalButton.disabled = false;
+    globalLabel.textContent = `Actualizar a ${pendingUpdate.version}`;
     showNotice(`Nueva versión ${pendingUpdate.version} disponible.`, "neutral");
   } catch (error) {
     title.textContent = "No se pudo comprobar";
     status.textContent = String(error);
     button.textContent = "Reintentar";
+    globalButton.hidden = false;
+    globalButton.disabled = false;
+    globalLabel.textContent = "Reintentar actualización";
     if (manual) showNotice(`No se pudo buscar actualizaciones: ${String(error)}`, "error");
   } finally {
     updateInProgress = false;
@@ -291,6 +310,15 @@ async function cancelLaunch() {
     await invoke("cancel_launch");
     el("#launch-stage").textContent = "Cancelado";
     el("#launch-detail").textContent = "El inicio fue cancelado";
+    el<HTMLButtonElement>("#cancel-launch").hidden = true;
+    window.setTimeout(() => {
+      el("#launch-progress").hidden = true;
+      el("#launch-progress-bar").style.width = "0%";
+      el("#launch-percent").textContent = "0%";
+      el("#launch-stage").textContent = "Preparando";
+      el("#launch-detail").textContent = "Comprobando componentes…";
+      all<HTMLButtonElement>(".play-action").forEach(button => { button.hidden = false; button.disabled = false; });
+    }, 650);
   } catch (error) {
     showNotice(`No se pudo cancelar: ${String(error)}`, "error");
   }
@@ -707,6 +735,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   updateCheck.checked = localStorage.getItem("aureus.updateCheck") !== "false";
   updateCheck.addEventListener("change", () => localStorage.setItem("aureus.updateCheck", String(updateCheck.checked)));
   el("#check-update-now").addEventListener("click", () => {
+    if (pendingUpdate) void installPendingUpdate();
+    else void checkForAureusUpdate(true);
+  });
+  el("#global-update").addEventListener("click", () => {
     if (pendingUpdate) void installPendingUpdate();
     else void checkForAureusUpdate(true);
   });
