@@ -11,6 +11,8 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 
 import java.util.List;
 
@@ -92,6 +94,7 @@ public final class PerformanceHud {
 
         if (client.player != null) {
             renderCombatInfo(graphics, client, config);
+            if (config.showItemCounters) renderItemCounters(graphics, client);
         }
 
         if (config.showCompatibility) {
@@ -108,18 +111,25 @@ public final class PerformanceHud {
         int y = 6;
         if (config.showAttackCooldown) {
             int percent = Math.round(client.player.getAttackStrengthScale(0.0F) * 100.0F);
+            graphics.fill(x - 4, y - 3, x + 92, y + 10, 0x65000000);
             draw(graphics, client, "Ataque  " + percent + "%", x, y, percent == 100 ? ACCENT : TEXT);
-            y += 11;
+            y += 17;
         }
         if (config.showArmor) {
             for (EquipmentSlot slot : new EquipmentSlot[]{
-                    EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+                    EquipmentSlot.MAINHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
+                    EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
                 ItemStack stack = client.player.getItemBySlot(slot);
                 if (!stack.isEmpty() && stack.isDamageableItem()) {
                     int remaining = stack.getMaxDamage() - stack.getDamageValue();
-                    int color = remaining < stack.getMaxDamage() / 5 ? WARNING : TEXT;
-                    draw(graphics, client, stack.getHoverName().getString() + "  " + remaining, x, y, color);
-                    y += 11;
+                    float ratio = remaining / (float) stack.getMaxDamage();
+                    int color = ratio <= 0.2F ? 0xFFFF6666 : ratio <= 0.45F ? 0xFFFFD166 : 0xFF72E69A;
+                    graphics.fill(x - 4, y - 2, x + 112, y + 18, 0x72000000);
+                    graphics.renderItem(stack, x, y);
+                    draw(graphics, client, remaining + " / " + stack.getMaxDamage(), x + 20, y + 2, color);
+                    graphics.fill(x + 20, y + 13, x + 102, y + 15, 0xFF353A36);
+                    graphics.fill(x + 20, y + 13, x + 20 + Math.round(82 * ratio), y + 15, color);
+                    y += 21;
                 }
             }
         }
@@ -127,10 +137,41 @@ public final class PerformanceHud {
             for (MobEffectInstance effect : client.player.getActiveEffects()) {
                 String name = effect.getEffect().value().getDisplayName().getString();
                 int seconds = effect.getDuration() / 20;
+                graphics.fill(x - 4, y - 3, x + 112, y + 10, 0x65000000);
                 draw(graphics, client, name + "  " + seconds + "s", x, y, TEXT);
-                y += 11;
+                y += 15;
             }
         }
+    }
+
+    private static void renderItemCounters(GuiGraphics graphics, Minecraft client) {
+        Item[] tracked = new Item[]{
+                Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE, Items.TOTEM_OF_UNDYING,
+                Items.WIND_CHARGE, Items.END_CRYSTAL, Items.ENDER_PEARL,
+                Items.SPLASH_POTION, Items.LINGERING_POTION
+        };
+        int visible = 0;
+        for (Item item : tracked) if (countItem(client, item) > 0) visible++;
+        int x = graphics.guiWidth() - 27;
+        int y = Math.max(42, graphics.guiHeight() / 2 - visible * 10);
+        for (Item item : tracked) {
+            int count = countItem(client, item);
+            if (count <= 0) continue;
+            ItemStack icon = new ItemStack(item);
+            graphics.fill(x - 3, y - 2, x + 20, y + 19, 0x72000000);
+            graphics.renderItem(icon, x, y);
+            graphics.renderItemDecorations(client.font, icon, x, y, Integer.toString(count));
+            y += 21;
+        }
+    }
+
+    private static int countItem(Minecraft client, Item item) {
+        int total = 0;
+        for (int slot = 0; slot < client.player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = client.player.getInventory().getItem(slot);
+            if (stack.is(item)) total += stack.getCount();
+        }
+        return total;
     }
 
     private static int graphicsWidth(Minecraft client) {

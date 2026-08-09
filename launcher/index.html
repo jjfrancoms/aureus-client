@@ -25,7 +25,7 @@
     <main>
       <header class="page-header">
         <div><p class="eyebrow">AUREUS CLIENT</p><h1 id="page-title">Inicio</h1><p id="page-description">Prepara Minecraft para jugar con Aureus.</p></div>
-        <div class="header-actions"><button id="global-update" class="global-update" hidden><span class="update-dot"></span><b id="global-update-label">Buscando actualización…</b></button><span class="version">v0.3.7 · <span class="selected-version-label">1.21.11</span></span></div>
+        <div class="header-actions"><button id="global-update" class="global-update" hidden><span class="update-dot"></span><b id="global-update-label">Buscando actualización…</b></button><span class="version">v0.3.8 · <span class="selected-version-label">1.21.11</span></span></div>
       </header>
 
       <div id="notice" class="notice" role="status" aria-live="polite">Comprobando tu instalación…</div>
@@ -48,31 +48,20 @@
       </section>
 
       <section class="view" data-view-panel="instances">
-        <article class="panel version-picker"><div><span class="panel-kicker">CATÁLOGO OFICIAL COMPLETO</span><h3>Seleccionar versión</h3><p>1.21.11 permanece como predeterminada. Estables, snapshots, beta y alpha se instalan en carpetas aisladas.</p></div><div><select id="minecraft-version"><option value="1.21.11">1.21.11 · Predeterminada</option></select><small id="version-compatibility">Pendiente de revisar</small></div></article>
-        <article class="panel version-picker"><div><span class="panel-kicker">PERFILES AISLADOS</span><h3>Instancia activa</h3><p>Duplica un perfil para separar mundos, mods y ajustes aunque utilice la misma versión.</p></div><div><select id="managed-instance"><option value="">Instancia de la versión</option></select><div class="actions"><button id="duplicate-instance" class="secondary">Duplicar</button><button id="import-instance" class="secondary">Importar</button><button id="delete-instance" class="secondary danger-action">Eliminar</button></div></div></article>
-        <article class="panel launcher-tools"><div><span class="panel-kicker">HERRAMIENTAS DE INSTANCIA</span><h3>Administración y recuperación</h3><p>Contenido, respaldos y diagnóstico de la versión seleccionada.</p></div><div class="actions"><button id="refresh-content" class="secondary">Contenido</button><button id="backup-instance" class="secondary">Respaldar</button><button id="export-instance" class="secondary">Exportar</button><button id="analyze-crash" class="secondary">Analizar cierre</button></div></article>
+        <div class="library-heading"><div><span class="panel-kicker">BIBLIOTECA</span><h2>Minecraft</h2><p>Selecciona una versión y deja que Aureus prepare todo lo necesario.</p></div><span id="instance-state" class="state-pill">Revisando</span></div>
+        <article class="panel library-primary">
+          <div class="library-select"><label for="minecraft-version">Versión</label><select id="minecraft-version"><option value="1.21.11">1.21.11 · Predeterminada</option></select><small id="version-compatibility">Pendiente de revisar</small></div>
+          <div class="library-select"><label for="managed-instance">Instancia</label><select id="managed-instance"><option value="">Instancia de la versión</option></select><small id="instance-mode">Revisando contenido</small></div>
+          <button class="primary install-action">Preparar</button>
+        </article>
+        <article class="panel library-summary"><div><span class="panel-kicker">INSTANCIA ACTIVA</span><h3 id="instance-name">Aureus 1.21.11</h3></div><div><span>Ubicación</span><code id="minecraft-path">Buscando…</code></div></article>
+        <details class="panel disclosure">
+          <summary>Herramientas avanzadas</summary>
+          <p>Administración, recuperación y exportación de la instancia.</p>
+          <div class="compact-actions"><button id="refresh-content" class="secondary">Administrar contenido</button><button id="duplicate-instance" class="secondary">Duplicar</button><button id="backup-instance" class="secondary">Respaldar</button><button id="export-instance" class="secondary">Exportar</button><button id="import-instance" class="secondary">Importar</button><button id="analyze-crash" class="secondary">Analizar cierre</button><button id="delete-instance" class="secondary danger-action">Eliminar</button></div>
+        </details>
         <article id="content-manager" class="panel content-manager" hidden><div class="panel-title"><div><span class="panel-kicker">CONTENIDO INSTALADO</span><h3>Mods, recursos, shaders y datapacks</h3></div><button id="close-content" class="secondary">Cerrar</button></div><div class="content-search"><input id="mod-search" type="search" placeholder="Buscar mods compatibles en Modrinth" /><button id="search-mods" class="secondary">Buscar</button></div><div id="mod-search-results" class="content-list" hidden></div><div id="content-list" class="content-list"><p class="muted-copy">Preparando inventario…</p></div></article>
         <article id="recovery-result" class="panel recovery-result" hidden></article>
-        <div class="section-heading"><div><span class="badge muted">BIBLIOTECA</span><h2>Minecraft <span class="selected-version-label">1.21.11</span></h2><p>Instalación, contenido y apariencia en un solo lugar.</p></div><span id="instance-state" class="state-pill">Revisando</span></div>
-        <div class="context-nav"><button class="context-link active">Instalación</button><button class="context-link" data-open-view="skins">Skins</button></div>
-        <div class="two-column">
-          <article class="panel">
-            <div class="panel-title"><div><span class="panel-kicker">AUREUS CLIENT</span><h3 id="instance-name">Aureus 1.21.11</h3></div><span class="fabric-mark">F</span></div>
-            <div class="detail-list">
-              <div><span>Recursos oficiales compartidos</span><code id="minecraft-path">Buscando…</code></div>
-              <div><span>Modo de instancia</span><b id="instance-mode">Aureus completo</b></div>
-              <div><span>Cargador</span><b>Fabric compatible o Vanilla automático</b></div>
-              <div><span>Mods</span><b>Se resuelven para la versión seleccionada</b></div>
-            </div>
-            <button class="primary wide install-action">Preparar o reparar instalación</button>
-          </article>
-          <article class="panel explanation">
-            <span class="panel-kicker">¿QUÉ HACE ESTE BOTÓN?</span>
-            <h3>Prepara una instancia independiente</h3>
-            <p>Descarga los archivos oficiales, el Java correcto y, cuando existen, Fabric, rendimiento, zoom, HUD y utilidades compatibles.</p>
-            <div class="callout"><strong>Todo en un paso</strong><span>Después podrás abrir Minecraft desde Aureus con el botón Jugar.</span></div>
-          </article>
-        </div>
       </section>
 
       <section class="view" data-view-panel="performance">
@@ -105,15 +94,19 @@
       </section>
 
       <section class="view" data-view-panel="settings">
-        <div class="section-heading"><div><span class="badge muted">PREFERENCIAS</span><h2>Ajustes</h2><p>Controla el comportamiento del launcher.</p></div></div>
-        <div class="settings-stack">
-          <article class="panel settings-row"><div><span class="panel-kicker">APLICACIÓN</span><h3>Preferencias del launcher</h3><p>Estos ajustes se guardan únicamente en este equipo.</p></div><div class="toggles"><label><input id="update-check" type="checkbox" checked /><span>Buscar actualizaciones al iniciar</span></label><label><input id="compact-mode" type="checkbox" /><span>Interfaz compacta</span></label></div></article>
-          <article class="panel settings-row updater-row"><div><span class="panel-kicker">ACTUALIZACIONES</span><h3 id="updater-title">Aureus está actualizado</h3><p id="updater-status">La comprobación automática está activa.</p><div class="update-progress" id="update-progress" hidden><span id="update-progress-bar"></span></div></div><button id="check-update-now" class="secondary">Buscar ahora</button></article>
-          <article class="panel technical"><span class="panel-kicker">INFORMACIÓN TÉCNICA</span><div class="detail-list"><div><span>Versión del launcher</span><b>0.3.7</b></div><div><span>Microsoft Client ID</span><code id="client-id">Cargando…</code></div><div><span>Datos de acceso</span><b>No se almacena tu contraseña</b></div></div></article>
-          <article class="panel settings-shortcuts"><div><span class="panel-kicker">CONFIGURACIÓN AVANZADA</span><h3>Más opciones</h3><p>Accede solo cuando necesites ajustar el cliente.</p></div><div class="actions"><button class="secondary" data-open-view="performance">Rendimiento</button><button class="secondary" data-open-view="account">Cuenta</button></div></article>
-          <article class="panel settings-row"><div><span class="panel-kicker">AJUSTE AUTOMÁTICO</span><h3>Perfil recomendado para este equipo</h3><p id="hardware-summary">Detectando memoria y procesador…</p></div><button id="recommend-profile" class="secondary">Detectar y aplicar</button></article>
-          <article class="panel diagnostics-panel"><div><span class="panel-kicker">SOPORTE</span><h3>Diagnóstico del sistema</h3><p>Revisa Java, Fabric, Aureus y el último registro del juego.</p></div><button id="run-diagnostics" class="secondary">Ejecutar diagnóstico</button><pre id="diagnostics-output" hidden></pre></article>
-        </div>
+        <div class="library-heading"><div><span class="panel-kicker">AJUSTES</span><h2>Preferencias</h2><p>Solo las opciones esenciales del launcher.</p></div></div>
+        <article class="panel essential-settings">
+          <label><span><strong>Actualizaciones automáticas</strong><small>Comprobar al abrir Aureus</small></span><input id="update-check" type="checkbox" checked /></label>
+          <label><span><strong>Interfaz compacta</strong><small>Reduce espacios y tamaños</small></span><input id="compact-mode" type="checkbox" /></label>
+        </article>
+        <article class="panel updater-simple"><div><span class="panel-kicker">ACTUALIZACIONES</span><h3 id="updater-title">Aureus está actualizado</h3><p id="updater-status">La comprobación automática está activa.</p><div class="update-progress" id="update-progress" hidden><span id="update-progress-bar"></span></div></div><button id="check-update-now" class="secondary">Comprobar</button></article>
+        <details class="panel disclosure">
+          <summary>Opciones avanzadas</summary>
+          <div class="advanced-setting"><div><strong>Perfil recomendado</strong><small id="hardware-summary">Detectando memoria y procesador…</small></div><button id="recommend-profile" class="secondary">Aplicar</button></div>
+          <div class="advanced-setting"><div><strong>Diagnóstico</strong><small>Java, Fabric y registros del juego</small></div><button id="run-diagnostics" class="secondary">Ejecutar</button></div>
+          <pre id="diagnostics-output" hidden></pre>
+          <div class="technical-inline"><span>Launcher 0.3.8</span><span id="client-id">Cargando…</span></div>
+        </details>
       </section>
 
       <section class="view" data-view-panel="account">

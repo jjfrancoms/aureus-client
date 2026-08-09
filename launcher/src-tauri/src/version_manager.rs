@@ -506,6 +506,7 @@ pub async fn resolve_modrinth_mods(
         "mouse-tweaks",
         "xaeros-minimap",
         "better-mount-hud",
+        "item-counter-fx",
     ];
     install_modrinth_projects(
         version,

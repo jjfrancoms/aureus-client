@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.8
+
+- Rediseña el panel de módulos dentro de Minecraft con tarjetas modernas, filtros y estados interactivos.
+- Añade iconos reales, barras y valores de durabilidad para armadura, herramientas y armas.
+- Incorpora contadores PvP para manzanas, tótems, cargas de viento, cristales, perlas y pociones.
+- Integra Item Counter y su dependencia para ampliar los objetos configurables.
+- Simplifica Biblioteca y Ajustes, agrupando las herramientas poco frecuentes en desplegables.
+
 ## 0.3.7
 
 - Rediseña el menú dentro de Minecraft como un panel de módulos visuales con estado verde/gris.

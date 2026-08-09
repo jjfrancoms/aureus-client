@@ -86,6 +86,8 @@ const PERFORMANCE_MODS: &[(&str, &str)] = &[
     ("MouseTweaks-fabric-mc1.21.11-2.30.jar", "https://cdn.modrinth.com/data/aC3cM3Vq/versions/i1duwnJl/MouseTweaks-fabric-mc1.21.11-2.30.jar"),
     ("xaerominimap-fabric-1.21.11-26.4.2.jar", "https://cdn.modrinth.com/data/1bokaNcj/versions/8MdqDp18/xaerominimap-fabric-1.21.11-26.4.2.jar"),
     ("bettermounthud-1.2.6.jar", "https://cdn.modrinth.com/data/kqJFAPU9/versions/rXZxHSEZ/bettermounthud-1.2.6.jar"),
+    ("ItemCounter-1.0.1+1.21.8.jar", "https://cdn.modrinth.com/data/z2ktbVdj/versions/BvFvJJjV/ItemCounter-1.0.1%2B1.21.8.jar"),
+    ("settingsmanager-1.1.3+1.21.11.jar", "https://cdn.modrinth.com/data/1dU3bHt8/versions/hjWxcBAQ/settingsmanager-1.1.3%2B1.21.11.jar"),
 ];
 
 #[derive(Serialize)]
