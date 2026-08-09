@@ -499,6 +499,13 @@ pub async fn resolve_modrinth_mods(
         "fast-ip-ping",
         "debugify",
         "fpsflow",
+        "hudfabric",
+        "shulkerboxtooltip",
+        "status-effect-bars",
+        "inventory-profiles-next",
+        "mouse-tweaks",
+        "xaeros-minimap",
+        "better-mount-hud",
     ];
     install_modrinth_projects(
         version,

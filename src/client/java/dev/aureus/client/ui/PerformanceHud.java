@@ -67,6 +67,16 @@ public final class PerformanceHud {
         if (config.showCoordinates && client.player != null) {
             draw(graphics, client, "XYZ  %.1f  %.1f  %.1f".formatted(
                     client.player.getX(), client.player.getY(), client.player.getZ()), config.hudX, y, TEXT);
+            y += 11;
+        }
+        if (config.showDirection && client.player != null) {
+            draw(graphics, client, "Dirección  " + client.player.getDirection().getName().toUpperCase(), config.hudX, y, TEXT);
+            y += 11;
+        }
+        if (config.showBiome && client.player != null && client.level != null) {
+            String biome = client.level.getBiome(client.player.blockPosition()).unwrapKey()
+                    .map(key -> key.identifier().getPath().replace('_', ' ')).orElse("desconocido");
+            draw(graphics, client, "Bioma  " + biome, config.hudX, y, TEXT);
         }
 
         if (config.showKeystrokes) {

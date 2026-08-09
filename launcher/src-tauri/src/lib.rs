@@ -78,6 +78,14 @@ const PERFORMANCE_MODS: &[(&str, &str)] = &[
     ("lambdynamiclights-4.9.1+1.21.11.jar", "https://cdn.modrinth.com/data/yBW8D80W/versions/5Tp7kdU0/lambdynamiclights-4.9.1%2B1.21.11.jar"),
     ("capes-1.5.10+1.21.11-fabric.jar", "https://cdn.modrinth.com/data/89Wsn8GD/versions/GAQAG80Q/capes-1.5.10%2B1.21.11-fabric.jar"),
     ("fast-ip-ping-v1.0.11-mc1.21.11-fabric.jar", "https://cdn.modrinth.com/data/9mtu0sUO/versions/E3Ei5xUe/fast-ip-ping-v1.0.11-mc1.21.11-fabric.jar"),
+    ("HudFabric-1.0.3-1.21.11.jar", "https://cdn.modrinth.com/data/jNODUcnv/versions/5G3wTf4Q/HudFabric-1.0.3-1.21.11.jar"),
+    ("shulkerboxtooltip-fabric-5.2.16+1.21.11.jar", "https://cdn.modrinth.com/data/2M01OLQq/versions/rZovgkWT/shulkerboxtooltip-fabric-5.2.16%2B1.21.11.jar"),
+    ("status-effect-bars-1.0.10.jar", "https://cdn.modrinth.com/data/x02cBj9Y/versions/iY0FQLmu/status-effect-bars-1.0.10.jar"),
+    ("InventoryProfilesNext-fabric-1.21.11-2.2.6.jar", "https://cdn.modrinth.com/data/O7RBXm3n/versions/YKjWPbto/InventoryProfilesNext-fabric-1.21.11-2.2.6.jar"),
+    ("libIPN-fabric-1.21.11-6.6.3.jar", "https://cdn.modrinth.com/data/onSQdWhM/versions/ByG214OZ/libIPN-fabric-1.21.11-6.6.3.jar"),
+    ("MouseTweaks-fabric-mc1.21.11-2.30.jar", "https://cdn.modrinth.com/data/aC3cM3Vq/versions/i1duwnJl/MouseTweaks-fabric-mc1.21.11-2.30.jar"),
+    ("xaerominimap-fabric-1.21.11-26.4.2.jar", "https://cdn.modrinth.com/data/1bokaNcj/versions/8MdqDp18/xaerominimap-fabric-1.21.11-26.4.2.jar"),
+    ("bettermounthud-1.2.6.jar", "https://cdn.modrinth.com/data/kqJFAPU9/versions/rXZxHSEZ/bettermounthud-1.2.6.jar"),
 ];
 
 #[derive(Serialize)]
